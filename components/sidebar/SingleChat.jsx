@@ -3,7 +3,7 @@ import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import React, { memo } from 'react';
 import LocaleLink from '../hoc/LocalLink';
-import { ChevronRight } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useTranslations } from '@/context/TranslationContext';
 import {
@@ -86,8 +86,8 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 							data-preview-button={chatId}
 							className={`
                                 flex-shrink-0
-                                opacity-0 
-                                group-hover:opacity-100 
+                                lg:opacity-0 
+                                lg:group-hover:opacity-100 
                                 focus:opacity-100 
                                 p-2 
                                 mr-2
@@ -98,7 +98,7 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
                                 ${isRTL ? 'rotate-180' : ''}
                                 ${isActive ? 'text-primary' : ''}
                             `}>
-							<ChevronRight className='w-5 h-5' />
+							<MoreHorizontal className='w-5 h-5' />
 						</button>
 					</TooltipTrigger>
 					<TooltipContent>

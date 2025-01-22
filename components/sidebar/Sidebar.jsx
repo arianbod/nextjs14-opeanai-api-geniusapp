@@ -15,10 +15,23 @@ import SingleChat from './SingleChat';
 import ChatPreview from '../chat/ChatPreview';
 import { AIPersonas } from '@/lib/Personas';
 import MemberProfile from './member-profile/MemberProfile';
-import { PenBoxIcon } from 'lucide-react';
+import { PenBoxIcon, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import LocaleLink from '../hoc/LocalLink';
 import { usePreferences } from '@/context/preferencesContext';
+
+const getDateCategory = (timestamp) => {
+	const now = new Date();
+	const date = new Date(timestamp);
+	const diffTime = Math.abs(now - date);
+	const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+	if (diffDays === 0) return 'Today';
+	if (diffDays === 1) return 'Yesterday';
+	if (diffDays <= 7) return 'Last 7 days';
+	if (diffDays <= 30) return 'Last 30 days';
+	return 'Older';
+};
 
 const Sidebar = () => {
 	const { isPinned, setIsHovered, isHovered, showSidebar, setSidebarPinned } =
@@ -37,6 +50,29 @@ const Sidebar = () => {
 	const [isTablet, setIsTablet] = useState(false);
 	const params = useParams();
 	const previewRef = useRef(null);
+	const sidebarRef = useRef(null);
+
+	const groupChatsByDate = () => {
+		const groups = {
+			Today: [],
+			Yesterday: [],
+			'Last 7 days': [],
+			'Last 30 days': [],
+			Older: [],
+		};
+
+		chatList.forEach((chat) => {
+			const category = getDateCategory(chat.timestamp);
+			groups[category].push(chat);
+		});
+
+		// Sort chats within each group by timestamp (newest first)
+		Object.keys(groups).forEach((key) => {
+			groups[key].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+		});
+
+		return groups;
+	};
 
 	// Click outside handler for preview
 	useEffect(() => {
@@ -88,7 +124,11 @@ const Sidebar = () => {
 	};
 
 	const handleMouseLeave = () => {
-		if (!isPinned) setIsHovered(false);
+		if (!isPinned) {
+			setIsHovered(false);
+			// Close chat preview when sidebar is closed
+			toggleChatPreview(null);
+		}
 	};
 
 	const handleCloseSidebars = () => {
@@ -99,6 +139,7 @@ const Sidebar = () => {
 	// Calculate sidebar and preview positioning classes
 	const sidebarPositionClass = isRTL ? 'right-0' : 'left-0';
 	const previewPositionClass = isRTL ? 'right-80' : 'left-80';
+	const closeButtonPositionClass = isRTL ? 'left-0' : 'right-0';
 
 	return (
 		<>
@@ -143,6 +184,8 @@ const Sidebar = () => {
 
 			{/* Main Sidebar Container */}
 			<div
+				ref={sidebarRef}
+				onMouseLeave={handleMouseLeave}
 				className={`
                 fixed 
                 inset-y-0 
@@ -169,6 +212,28 @@ const Sidebar = () => {
                 duration-300 
                 ease-out
             `}>
+				{/* Sticky Close Button for Mobile */}
+				{isMobile && mobileSidebarOpen && (
+					<button
+						onClick={handleCloseSidebars}
+						className={`
+                            absolute 
+                            ${closeButtonPositionClass} 
+                            top-1/2 
+                            transform 
+                            -translate-y-1/2
+                            ${isRTL ? '-translate-x-1' : 'translate-x-1'}
+                            bg-base-200 
+                            p-4 
+                            rounded-full 
+                            shadow-lg 
+                            hover:bg-base-300 
+                            z-50
+                        `}>
+						<MdClose className='w-6 h-6' />
+					</button>
+				)}
+
 				{/* Main Sidebar */}
 				<div className='flex flex-col h-full bg-base-200/95 backdrop-blur-xl border-r border-base-300/50 relative w-80'>
 					{/* Pin Button */}
@@ -207,25 +272,46 @@ const Sidebar = () => {
 								<PenBoxIcon className='w-6 h-6' />
 							</LocaleLink>
 						</div>
-						<ul className='space-y-2 w-full'>
-							{chatList.map((chat) => {
-								const persona = getPersonaByChat(chat);
-								const avatarUrl =
-									persona?.avatar || '/images/default-avatar.png';
-								const chatTitle = chat.title.replace(`"`, '');
 
-								return (
-									<SingleChat
-										key={chat.id}
-										chatId={chat.id}
-										persona={persona}
-										avatarUrl={avatarUrl}
-										chatTitle={chatTitle}
-										onSelect={handleCloseSidebars}
-									/>
-								);
-							})}
-						</ul>
+						{Object.entries(groupChatsByDate()).map(([category, chats]) => {
+							if (chats.length === 0) return null;
+
+							return (
+								<div
+									key={category}
+									className='mb-2'>
+									{/* Minimal date divider */}
+									<div className='flex items-center gap-2 my-2'>
+										<div className='h-px flex-1 bg-base-300/30'></div>
+										<span className='text-xs font-medium text-base-content/50'>
+											{category}
+										</span>
+										<div className='h-px flex-1 bg-base-300/30'></div>
+									</div>
+
+									{/* Chat items */}
+									<ul className='space-y-2 w-full'>
+										{chats.map((chat) => {
+											const persona = getPersonaByChat(chat);
+											const avatarUrl =
+												persona?.avatar || '/images/default-avatar.png';
+											const chatTitle = chat.title.replace(`"`, '');
+
+											return (
+												<SingleChat
+													key={chat.id}
+													chatId={chat.id}
+													persona={persona}
+													avatarUrl={avatarUrl}
+													chatTitle={chatTitle}
+													onSelect={handleCloseSidebars}
+												/>
+											);
+										})}
+									</ul>
+								</div>
+							);
+						})}
 					</div>
 
 					{/* Account Section */}
@@ -234,9 +320,34 @@ const Sidebar = () => {
 
 				{/* Chat Preview - Desktop & Tablet */}
 				{showChatPreview && !isMobile && (
-					<div
-						ref={previewRef}
-						className={`
+					<>
+						{/* Close Button for Preview */}
+						<button
+							onClick={() => toggleChatPreview(null)}
+							className={`
+                            fixed 
+                            top-4 
+                            ${isRTL ? 'left-4' : 'right-4'}
+                            z-40
+                            p-2 
+                            bg-base-300/80 
+                            hover:bg-base-300 
+                            text-base-content
+                            hover:text-primary
+                            rounded-full 
+                            transition-all 
+                            duration-200
+                            backdrop-blur-sm
+                            shadow-lg
+                        `}
+							style={{
+								[isRTL ? 'marginLeft' : 'marginRight']: '320px',
+							}}>
+							<X className='w-5 h-5' />
+						</button>
+						<div
+							ref={previewRef}
+							className={`
                             w-80 
                             h-full 
                             fixed 
@@ -255,13 +366,22 @@ const Sidebar = () => {
 														}
                             z-30
                         `}>
-						<ChatPreview
-							chatId={previewChatId}
-							onClose={() => toggleChatPreview(null)}
-						/>
-					</div>
+							<ChatPreview
+								chatId={previewChatId}
+								onClose={() => toggleChatPreview(null)}
+							/>
+						</div>
+					</>
 				)}
 			</div>
+
+			{/* Mobile Overlay - Closes on any click */}
+			{mobileSidebarOpen && (
+				<div
+					className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30 lg:hidden transition-opacity duration-200'
+					onClick={handleCloseSidebars}
+				/>
+			)}
 
 			{/* Chat Preview - Mobile */}
 			{showChatPreview && isMobile && (
@@ -277,14 +397,6 @@ const Sidebar = () => {
 						/>
 					</div>
 				</>
-			)}
-
-			{/* Mobile Overlay */}
-			{mobileSidebarOpen && (
-				<div
-					className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30 lg:hidden transition-opacity duration-200'
-					onClick={handleCloseSidebars}
-				/>
 			)}
 		</>
 	);
