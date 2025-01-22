@@ -1,13 +1,12 @@
 'use client';
 
 import React, { memo, useState, useEffect } from 'react';
-import Link from 'next/link';
 import SidebarHeader from './SidebarHeader';
 import MobileHeader from './MobileHeader';
 import TokenSection from './TokenSection';
 import { useAuth } from '@/context/AuthContext';
 import { FaBars } from 'react-icons/fa';
-import { MdAdd, MdClose } from 'react-icons/md';
+import { MdClose } from 'react-icons/md';
 import { BsPinAngle, BsPinAngleFill } from 'react-icons/bs';
 import { HiChevronRight, HiChevronLeft } from 'react-icons/hi';
 import { useChat } from '@/context/ChatContext';
@@ -24,7 +23,6 @@ import { usePreferences } from '@/context/preferencesContext';
 const Sidebar = () => {
 	const { isPinned, setIsHovered, isHovered, showSidebar, setSidebarPinned } =
 		usePreferences();
-
 	const { user } = useAuth();
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 	const {
@@ -36,18 +34,19 @@ const Sidebar = () => {
 	} = useChat();
 	const { dict, isRTL } = useTranslations();
 	const [isMobile, setIsMobile] = useState(false);
+	const [isTablet, setIsTablet] = useState(false);
 	const params = useParams();
 
-	// Mobile detection
+	// Enhanced responsive detection
 	useEffect(() => {
-		const checkMobile = () => {
+		const checkResponsive = () => {
 			setIsMobile(window.innerWidth < 768);
+			setIsTablet(window.innerWidth >= 768 && window.innerWidth < 1024);
 		};
 
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-
-		return () => window.removeEventListener('resize', checkMobile);
+		checkResponsive();
+		window.addEventListener('resize', checkResponsive);
+		return () => window.removeEventListener('resize', checkResponsive);
 	}, []);
 
 	if (!user) return null;
@@ -73,13 +72,22 @@ const Sidebar = () => {
 		toggleChatPreview(null);
 	};
 
+	// Calculate sidebar and preview positioning classes
+	const sidebarPositionClass = isRTL ? 'right-0' : 'left-0';
+	const previewPositionClass = isRTL ? 'right-80' : 'left-80';
+
 	return (
 		<>
 			{/* Mobile Menu Button */}
 			<div
-				className={`lg:hidden fixed top-3 ${
-					isRTL ? 'right-0' : 'left-0'
-				} z-50 ${mobileSidebarOpen ? 'hidden' : ''}`}>
+				className={`
+                lg:hidden 
+                fixed 
+                top-3 
+                z-50 
+                ${sidebarPositionClass}
+                ${mobileSidebarOpen ? 'hidden' : ''}
+            `}>
 				<button
 					onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
 					className='p-4 bg-base-200/80 backdrop-blur-sm rounded-full shadow-lg hover:bg-base-300/80 active:scale-95 transition-all'>
@@ -94,9 +102,7 @@ const Sidebar = () => {
 			{/* Desktop Hover Area */}
 			{!isPinned && (
 				<div
-					className={`hidden lg:flex fixed ${
-						isRTL ? 'right-0' : 'left-0'
-					} top-0 w-8 h-full z-30 items-center hover:bg-base-300/20 transition-colors`}
+					className={`hidden lg:flex fixed ${sidebarPositionClass} top-0 w-8 h-full z-30 items-center hover:bg-base-300/20 transition-colors`}
 					onMouseEnter={handleMouseEnter}>
 					<div
 						className={`flex items-center gap-2 px-1 py-3 ${
@@ -111,11 +117,16 @@ const Sidebar = () => {
 				</div>
 			)}
 
-			{/* Main Sidebar */}
+			{/* Main Sidebar Container */}
 			<div
-				className={`fixed inset-y-0 ${
-					isRTL ? 'right-0' : 'left-0'
-				} z-40 w-80 transform 
+				className={`
+                fixed 
+                inset-y-0 
+                ${sidebarPositionClass}
+                z-40 
+                flex
+                ${isMobile || isTablet ? 'w-full md:w-80' : 'w-80'}
+                transform
                 ${
 									mobileSidebarOpen
 										? 'translate-x-0'
@@ -130,10 +141,12 @@ const Sidebar = () => {
 										? 'lg:translate-x-full'
 										: 'lg:-translate-x-full'
 								}
-                transition-transform duration-200 ease-out`}
-				onMouseEnter={handleMouseEnter}
-				onMouseLeave={handleMouseLeave}>
-				<div className='flex flex-col h-full bg-base-200 shadow-lg relative'>
+                transition-transform 
+                duration-300 
+                ease-out
+            `}>
+				{/* Main Sidebar */}
+				<div className='flex flex-col h-full bg-base-200/95 backdrop-blur-xl border-r border-base-300/50 relative w-80'>
 					{/* Pin Button */}
 					<button
 						className={`hidden lg:flex absolute top-4 ${
@@ -166,7 +179,7 @@ const Sidebar = () => {
 									handleCloseSidebars();
 								}}
 								href='/chat'
-								className='flex items-center gap-4 text-blue-500 hover:bg-base-300 rounded-full transition-colors p-2'>
+								className='flex items-center gap-4 text-primary hover:bg-base-300 rounded-full transition-colors p-2'>
 								<PenBoxIcon className='w-6 h-6' />
 							</LocaleLink>
 						</div>
@@ -194,34 +207,45 @@ const Sidebar = () => {
 					{/* Account Section */}
 					<MemberProfile />
 				</div>
+
+				{/* Chat Preview - Desktop & Tablet */}
+				{showChatPreview && !isMobile && (
+					<div
+						className={`
+                        w-80 
+                        h-full 
+                        fixed 
+                        top-0 
+                        ${previewPositionClass}
+                        transform 
+                        transition-transform 
+                        duration-300 
+                        ease-out
+                        ${
+													showChatPreview
+														? 'translate-x-0'
+														: isRTL
+														? '-translate-x-full'
+														: 'translate-x-full'
+												}
+                        z-30
+                    `}>
+						<ChatPreview
+							chatId={previewChatId}
+							onClose={() => toggleChatPreview(null)}
+						/>
+					</div>
+				)}
 			</div>
 
-			{/* Chat Preview Sidebar - Desktop */}
-			{showChatPreview && !isMobile && (
-				<div
-					className={`fixed top-0 ${
-						isRTL ? 'left-0' : 'right-0'
-					} w-80 h-full bg-base-200 shadow-lg transform transition-transform duration-200 ease-out z-30`}
-					style={{
-						transform: showChatPreview
-							? 'translateX(0)'
-							: `translateX(${isRTL ? '-100%' : '100%'})`,
-					}}>
-					<ChatPreview
-						chatId={previewChatId}
-						onClose={() => toggleChatPreview(null)}
-					/>
-				</div>
-			)}
-
-			{/* Chat Preview Modal - Mobile */}
+			{/* Chat Preview - Mobile */}
 			{showChatPreview && isMobile && (
 				<>
 					<div
 						className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40'
 						onClick={() => toggleChatPreview(null)}
 					/>
-					<div className='fixed top-0 left-0 right-0 h-2/3 bg-base-200 rounded-b-xl shadow-lg transform transition-all duration-200 ease-out z-50'>
+					<div className='fixed inset-x-0 bottom-0 h-2/3 bg-base-200 rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-50'>
 						<ChatPreview
 							chatId={previewChatId}
 							onClose={() => toggleChatPreview(null)}
@@ -230,7 +254,7 @@ const Sidebar = () => {
 				</>
 			)}
 
-			{/* Mobile Overlay for main sidebar */}
+			{/* Mobile Overlay */}
 			{mobileSidebarOpen && (
 				<div
 					className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30 lg:hidden transition-opacity duration-200'
