@@ -112,7 +112,7 @@ const Sidebar = () => {
 	if (!user) return null;
 
 	const getPersonaByChat = (chat) => {
-		if (!chat.provider || !chat.modelCodeName) return null;
+		if (!chat?.provider || !chat?.modelCodeName) return null;
 		return AIPersonas.find(
 			(p) =>
 				p.provider === chat.provider && p.modelCodeName === chat.modelCodeName
@@ -368,6 +368,11 @@ const Sidebar = () => {
                         `}>
 							<ChatPreview
 								chatId={previewChatId}
+								avatarUrl={
+									getPersonaByChat(
+										chatList.find((chat) => chat.id === previewChatId)
+									)?.avatar || '/images/default-avatar.png'
+								}
 								onClose={() => toggleChatPreview(null)}
 							/>
 						</div>
@@ -393,6 +398,11 @@ const Sidebar = () => {
 					<div className='fixed inset-x-0 bottom-0 h-2/3 bg-base-200 rounded-t-xl shadow-lg transform transition-all duration-300 ease-out z-50'>
 						<ChatPreview
 							chatId={previewChatId}
+							avatarUrl={
+								getPersonaByChat(
+									chatList.find((chat) => chat.id === previewChatId)
+								)?.avatar || '/images/default-avatar.png'
+							}
 							onClose={() => toggleChatPreview(null)}
 						/>
 					</div>
@@ -401,5 +411,4 @@ const Sidebar = () => {
 		</>
 	);
 };
-
 export default memo(Sidebar);

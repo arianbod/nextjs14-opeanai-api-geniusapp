@@ -8,6 +8,7 @@ import ShowTokenAmount from '../token/ShowTokenAmount';
 import { useChat } from '@/context/ChatContext';
 import { useTranslations } from '@/context/TranslationContext';
 import { useParams } from 'next/navigation';
+import LocaleLink from '../hoc/LocalLink';
 
 const SidebarHeader = () => {
 	const { resetChat } = useChat();
@@ -17,10 +18,10 @@ const SidebarHeader = () => {
 		<div className='flex flex-col py-6 px-6'>
 			<div className='flex flex-col items-center justify-between mb-4'>
 				<div className=' flex flex-col items-center gap-4'>
-					<Link
+					<LocaleLink
 						className='flex gap-4 place-items-center'
 						onClick={() => resetChat()}
-						href={`/${params.lang}/chat`}>
+						href={`/chat`}>
 						<div className='relative w-16 h-16  '>
 							<Image
 								alt='logo'
@@ -40,7 +41,7 @@ const SidebarHeader = () => {
 							href={`/${params.lang}/chat`}
 							className='text-2xl tracking-wide capitalize font-semibold'>
 						</Link> */}
-					</Link>
+					</LocaleLink>
 					<div className='flex flex-col'>
 						<div className='flex gap-2  place-items-center justify-center'>
 							<ThemeToggle />

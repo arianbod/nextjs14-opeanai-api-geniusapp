@@ -1,22 +1,48 @@
 // components/chat/ChatPreview.jsx
 import React from 'react';
-import { MessageSquare, X, View } from 'lucide-react';
+import { MessageSquare, X, Zap, Code, FileText } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useTranslations } from '@/context/TranslationContext';
 import LocaleLink from '../hoc/LocalLink';
 import Image from 'next/image';
 
-const ChatPreview = ({ chatId, onClose }) => {
+const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 	const { previewMessages, previewLoading, chatList } = useChat();
 	const { isRTL } = useTranslations();
 	const messages = previewMessages[chatId] || [];
 	const currentChat = chatList.find((chat) => chat.id === chatId);
 
+	const getChatLengthColor = (messagesCount) => {
+		if (messagesCount > 20) return 'bg-error'; // Red for long chats
+		if (messagesCount < 5) return 'bg-success'; // Green for short chats
+		return 'bg-warning'; // Yellow for medium chats
+	};
+
+	const analyzeTokenUsage = (messages) => {
+		const totalChars = messages.reduce(
+			(acc, msg) => acc + msg.content.length,
+			0
+		);
+		if (totalChars > 6000)
+			return { type: 'high', label: 'High Usage', icon: Zap };
+		if (totalChars > 2000)
+			return { type: 'moderate', label: 'Moderate', icon: Zap };
+		return { type: 'light', label: 'Light Usage', icon: Zap };
+	};
+
+	const analyzeContentType = (messages) => {
+		const codeBlockCount = messages.filter((msg) =>
+			msg.content.includes('```')
+		).length;
+		if (codeBlockCount > 3)
+			return { type: 'technical', label: 'Technical', icon: Code };
+		return { type: 'general', label: 'General', icon: FileText };
+	};
+
 	const handleOpenChat = () => {
 		onClose();
 	};
 
-	// Prevent event propagation for the content area
 	const handleContentClick = (e) => {
 		e.stopPropagation();
 	};
@@ -29,6 +55,18 @@ const ChatPreview = ({ chatId, onClose }) => {
 			hour: '2-digit',
 			minute: '2-digit',
 		});
+	};
+
+	// Simplified StatBadge component
+	const StatBadge = ({ analysis }) => {
+		const Icon = analysis.icon;
+		return (
+			<div className='flex items-center gap-1.5 text-base-content/70 min-w-fit'>
+				<Icon className='w-4 h-4 shrink-0' />
+				<span className='hidden sm:inline'>{analysis.label}</span>
+				<span className='inline sm:hidden'>{analysis.label.split(' ')[0]}</span>
+			</div>
+		);
 	};
 
 	return (
@@ -49,14 +87,14 @@ const ChatPreview = ({ chatId, onClose }) => {
 			<div className='sticky top-0 z-10 bg-base-100'>
 				<div className='flex justify-between items-center p-4'>
 					<div className='flex items-center gap-3'>
-						{currentChat?.model && (
-							<div className='w-12 h-12 rounded-full overflow-hidden ring-2 ring-primary/10 transition-shadow duration-300 hover:ring-primary/20'>
+						{currentChat && (
+							<div className='relative w-12 h-12'>
 								<Image
-									src={currentChat.avatar || '/images/default-avatar.png'}
-									alt={currentChat.model}
+									src={avatarUrl}
+									alt={currentChat.title || 'Chat avatar'}
 									width={48}
 									height={48}
-									className='object-cover'
+									className='rounded-full object-cover ring-2 ring-primary/10 transition-shadow duration-300 hover:ring-primary/20'
 								/>
 							</div>
 						)}
@@ -77,14 +115,25 @@ const ChatPreview = ({ chatId, onClose }) => {
 					</button>
 				</div>
 
-				{/* Quick Stats */}
+				{/* Stats Section */}
 				<div className='px-4 py-3 bg-base-200/50 border-y border-base-200'>
-					<div className='flex items-center gap-2 text-sm text-base-content/70'>
-						<MessageSquare className='w-4 h-4' />
-						<span className='capitalize'>
-							you have {messages.length}{' '}
-							{messages.length > 1 ? 'prompts' : 'prompt'} in this conversation
-						</span>
+					<div className='flex items-center justify-between text-sm text-base-content/70 whitespace-nowrap overflow-x-auto'>
+						<div className='flex items-center gap-1.5 min-w-fit'>
+							<div className='relative'>
+								<MessageSquare className='w-4 h-4 shrink-0' />
+								<div
+									className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${getChatLengthColor(
+										messages.length
+									)} ring-1 ring-base-100`}
+								/>
+							</div>
+							<span className='sm:inline'>{messages.length} Prompts</span>
+							<span className='inline sm:hidden'>{messages.length}</span>
+						</div>
+						<div className='h-4 w-px bg-base-content/20 shrink-0 mx-2'></div>
+						<StatBadge analysis={analyzeTokenUsage(messages)} />
+						<div className='h-4 w-px bg-base-content/20 shrink-0 mx-2'></div>
+						<StatBadge analysis={analyzeContentType(messages)} />
 					</div>
 				</div>
 			</div>
@@ -123,9 +172,8 @@ const ChatPreview = ({ chatId, onClose }) => {
 				<LocaleLink
 					href={`/chat/${chatId}`}
 					onClick={handleOpenChat}
-					className='flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary text-white font-bold rounded-lg transition-colors duration-200 hover:bg-primary/90 '>
+					className='flex items-center justify-center gap-2 w-full py-3 px-4 bg-primary text-white font-bold rounded-lg transition-colors duration-200 hover:bg-primary/90'>
 					<span>View Full Conversation</span>
-					{/* <View className='w-4 h-4' /> */}
 				</LocaleLink>
 			</div>
 		</div>
