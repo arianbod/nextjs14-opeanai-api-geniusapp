@@ -68,11 +68,8 @@ model Chat {
   orderId       Int       @unique @default(autoincrement())
   metadata      Json?     @default("{}")
   modelKey      String?
-  appId         Int       @default(1)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages      Message[]
-
-  @@index([userId])
 }
 
 model Message {
@@ -140,13 +137,6 @@ model Payment {
   @@index([createdAt])
   @@index([stripeSessionId])
   @@map("payments")
-}
-
-model Inapp {
-  appId   Int     @id @default(autoincrement())
-  appName String
-  appType String?
-  appUrl  String?
 }
 
 enum UserStatus {
