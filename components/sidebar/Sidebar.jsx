@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import SidebarHeader from './SidebarHeader';
 import MobileHeader from './MobileHeader';
 import TokenSection from './TokenSection';
@@ -36,6 +36,30 @@ const Sidebar = () => {
 	const [isMobile, setIsMobile] = useState(false);
 	const [isTablet, setIsTablet] = useState(false);
 	const params = useParams();
+	const previewRef = useRef(null);
+
+	// Click outside handler for preview
+	useEffect(() => {
+		const handleClickOutside = (event) => {
+			if (
+				showChatPreview &&
+				previewRef.current &&
+				!previewRef.current.contains(event.target) &&
+				!event.target.closest('[data-chat-item]') &&
+				!event.target.closest('[data-preview-button]')
+			) {
+				toggleChatPreview(null);
+			}
+		};
+
+		if (showChatPreview) {
+			document.addEventListener('mousedown', handleClickOutside);
+		}
+
+		return () => {
+			document.removeEventListener('mousedown', handleClickOutside);
+		};
+	}, [showChatPreview, toggleChatPreview]);
 
 	// Enhanced responsive detection
 	useEffect(() => {
@@ -211,25 +235,26 @@ const Sidebar = () => {
 				{/* Chat Preview - Desktop & Tablet */}
 				{showChatPreview && !isMobile && (
 					<div
+						ref={previewRef}
 						className={`
-                        w-80 
-                        h-full 
-                        fixed 
-                        top-0 
-                        ${previewPositionClass}
-                        transform 
-                        transition-transform 
-                        duration-300 
-                        ease-out
-                        ${
-													showChatPreview
-														? 'translate-x-0'
-														: isRTL
-														? '-translate-x-full'
-														: 'translate-x-full'
-												}
-                        z-30
-                    `}>
+                            w-80 
+                            h-full 
+                            fixed 
+                            top-0 
+                            ${previewPositionClass}
+                            transform 
+                            transition-transform 
+                            duration-300 
+                            ease-out
+                            ${
+															showChatPreview
+																? 'translate-x-0'
+																: isRTL
+																? '-translate-x-full'
+																: 'translate-x-full'
+														}
+                            z-30
+                        `}>
 						<ChatPreview
 							chatId={previewChatId}
 							onClose={() => toggleChatPreview(null)}

@@ -70,7 +70,9 @@ const ChatPreview = ({ chatId, onClose }) => {
 					<div className='flex flex-col items-center p-3 rounded-lg bg-base-300/30 backdrop-blur-sm'>
 						<Clock className='w-5 h-5 mb-1 text-primary/70' />
 						<span className='text-sm font-medium'>
-							{new Date(messages[0]?.timestamp).toLocaleDateString()}
+							{messages[0]
+								? new Date(messages[0].timestamp).toLocaleDateString()
+								: 'N/A'}
 						</span>
 						<span className='text-xs text-base-content/60'>Started</span>
 					</div>

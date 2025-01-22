@@ -29,19 +29,20 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 	return (
 		<li
 			className={`
-            relative 
-            flex 
-            items-center 
-            rounded-xl 
-            transition-all 
-            duration-300 
-            group
-            hover:bg-base-300/50
-            ${isActive ? 'bg-base-300/50 shadow-sm' : ''}
-        `}>
+                group 
+                relative 
+                flex 
+                items-center 
+                rounded-xl 
+                transition-all 
+                duration-300
+                hover:bg-base-300/50
+                ${isActive ? 'bg-base-300/50 shadow-sm' : ''}
+            `}
+			data-chat-item={chatId}>
 			<LocaleLink
 				href={`/chat/${chatId}`}
-				className='flex flex-1 items-center py-3 px-3 min-w-0' // min-w-0 helps with text truncation
+				className='flex flex-1 items-center py-3 px-3 min-w-0'
 				onClick={onSelect}>
 				{/* Persona avatar with tooltip */}
 				<TooltipProvider>
@@ -67,7 +68,7 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 					</Tooltip>
 				</TooltipProvider>
 
-				{/* Chat info - using flex-1 and min-w-0 for proper text truncation */}
+				{/* Chat info */}
 				<div className='flex-1 min-w-0 ml-3'>
 					<h3 className='font-medium text-sm truncate'>{chatTitle}</h3>
 					<p className='text-xs text-base-content/60 truncate'>
@@ -82,6 +83,7 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 					<TooltipTrigger asChild>
 						<button
 							onClick={handlePreviewClick}
+							data-preview-button={chatId}
 							className={`
                                 flex-shrink-0
                                 opacity-0 
