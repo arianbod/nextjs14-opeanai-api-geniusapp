@@ -67,6 +67,12 @@ export const ChatProvider = ({ children }) => {
     const [searchFilter, setSearchFilter] = useState('all');
     const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+    const [showChatPreview, setShowChatPreview] = useState(false);
+    const [previewChatId, setPreviewChatId] = useState(null);
+    // Add these to your state declarations in ChatContext
+    const [previewMessages, setPreviewMessages] = useState({});
+    const [previewLoading, setPreviewLoading] = useState(false);
+
     // Image generation states
     const [imageGeneration, setImageGeneration] = useState({
         isGenerating: false,
@@ -97,6 +103,69 @@ export const ChatProvider = ({ children }) => {
             }))
         );
     }, []);
+
+    // Add this function to fetch preview messages
+    // Update fetchPreviewMessages in ChatContext
+    const fetchPreviewMessages = useCallback(async (chatId) => {
+        if (!chatId || !user?.userId) { serverLogger("we face in fetCh preview", chatId) };
+
+        setPreviewLoading(true);
+        try {
+            const response = await fetch('/api/chat/getChatMessagesPreview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.userId, chatId })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to fetch preview messages');
+            }
+
+            const { messages } = await response.json();
+            if (Array.isArray(messages)) {
+                setPreviewMessages(prev => ({
+                    ...prev,
+                    [chatId]: messages
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching preview messages:', error);
+            toast.error('Failed to load chat preview');
+            setPreviewMessages(prev => {
+                const newMessages = { ...prev };
+                delete newMessages[chatId];
+                return newMessages;
+            });
+        } finally {
+            setPreviewLoading(false);
+        }
+    }, [user?.userId]);
+
+    // Update toggleChatPreview to handle errors better
+    const toggleChatPreview = useCallback((chatId) => {
+        if (!chatId) {
+            setShowChatPreview(false);
+            setPreviewChatId(null);
+            return;
+        }
+
+        if (previewChatId === chatId) {
+            setShowChatPreview(false);
+            setPreviewChatId(null);
+        } else {
+            setShowChatPreview(true);
+            setPreviewChatId(chatId);
+            // Only fetch if we don't already have the messages
+            if (!previewMessages[chatId]) {
+                fetchPreviewMessages(chatId).catch(error => {
+                    console.error('Failed to fetch preview messages:', error);
+                    setShowChatPreview(false);
+                    setPreviewChatId(null);
+                });
+            }
+        }
+    }, [previewChatId, previewMessages, fetchPreviewMessages]);
 
     const fetchChats = useCallback(async () => {
         if (!user?.userId) return;
@@ -612,7 +681,13 @@ export const ChatProvider = ({ children }) => {
         setForceImageGeneration,
         // Combined user message
         processUserMessage,
-        user
+        user,
+        showChatPreview,
+        previewChatId,
+        toggleChatPreview,
+        previewMessages,
+        previewLoading,
+        fetchPreviewMessages,
     };
 
     return <ChatContext.Provider value={values}>{children}</ChatContext.Provider>;

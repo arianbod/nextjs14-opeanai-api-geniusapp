@@ -365,3 +365,53 @@ export async function getChatMetadata(chatId) {
         throw error;
     }
 }
+// server/chat.js
+export async function getChatMessagesPreview(userId, chatId) {
+    console.log("server action called with", userId, chatId)
+    if (!chatId || !userId) {
+        throw new Error('Missing required parameters');
+    }
+
+    try {
+        const user = await getUserById(userId);
+        if (!user) {
+            console.error('User not found:', userId);
+            throw new Error('User not authenticated');
+        }
+        // First verify chat ownership
+        const chatIdString = Array.isArray(chatId) ? chatId[0] : chatId;
+        const chat = await prisma.chat.findFirst({
+            where: {
+                id: chatIdString,
+                userId: userId
+            }
+        });
+
+        if (!chat) {
+            throw new Error('Chat not found or unauthorized');
+        }
+
+        // Get user messages for preview
+        const messages = await prisma.message.findMany({
+            where: {
+                chatId,
+                role: 'user'
+            },
+            orderBy: { createdAt: 'asc' },
+            select: {
+                id: true,
+                content: true,
+                createdAt: true
+            }
+        });
+
+        return messages.map(message => ({
+            id: message.id,
+            content: message.content,
+            timestamp: message.createdAt.toISOString()
+        }));
+    } catch (error) {
+        console.error('Error getting chat messages preview:', error);
+        throw error;
+    }
+}

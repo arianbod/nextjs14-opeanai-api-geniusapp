@@ -82,6 +82,9 @@ export function middleware(request: NextRequest) {
 	const pathname = request.nextUrl.pathname;
 	const language = getLanguageFromRequest(request);
 
+	if (request.nextUrl.pathname.startsWith('/api/')) {
+		return NextResponse.next();
+	}
 	// Handle static files and public routes
 	if (pathname.startsWith('/images/') || isPublicPath(pathname)) {
 		return NextResponse.next();

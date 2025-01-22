@@ -1,11 +1,10 @@
-// components/sidebar/Sidebar.jsx
 'use client';
 
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import SidebarHeader from './SidebarHeader';
-import MobileHeader from './MobileHeader'; // New component for mobile
-import TokenSection from './TokenSection'; // New component
+import MobileHeader from './MobileHeader';
+import TokenSection from './TokenSection';
 import { useAuth } from '@/context/AuthContext';
 import { FaBars } from 'react-icons/fa';
 import { MdAdd, MdClose } from 'react-icons/md';
@@ -14,6 +13,7 @@ import { HiChevronRight, HiChevronLeft } from 'react-icons/hi';
 import { useChat } from '@/context/ChatContext';
 import { useTranslations } from '@/context/TranslationContext';
 import SingleChat from './SingleChat';
+import ChatPreview from '../chat/ChatPreview';
 import { AIPersonas } from '@/lib/Personas';
 import MemberProfile from './member-profile/MemberProfile';
 import { PenBoxIcon } from 'lucide-react';
@@ -22,19 +22,33 @@ import LocaleLink from '../hoc/LocalLink';
 import { usePreferences } from '@/context/preferencesContext';
 
 const Sidebar = () => {
-	const {
-		isPinned,
-		setIsHovered,
-		isHovered,
-		showSidebar,
-		setSidebarPinned, // ← Make sure to destructure setSidebarPinned here
-	} = usePreferences();
+	const { isPinned, setIsHovered, isHovered, showSidebar, setSidebarPinned } =
+		usePreferences();
+
 	const { user } = useAuth();
 	const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-	const { chatList, resetChat } = useChat();
+	const {
+		chatList,
+		resetChat,
+		showChatPreview,
+		previewChatId,
+		toggleChatPreview,
+	} = useChat();
 	const { dict, isRTL } = useTranslations();
-	const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+	const [isMobile, setIsMobile] = useState(false);
 	const params = useParams();
+
+	// Mobile detection
+	useEffect(() => {
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth < 768);
+		};
+
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+
+		return () => window.removeEventListener('resize', checkMobile);
+	}, []);
 
 	if (!user) return null;
 
@@ -52,6 +66,11 @@ const Sidebar = () => {
 
 	const handleMouseLeave = () => {
 		if (!isPinned) setIsHovered(false);
+	};
+
+	const handleCloseSidebars = () => {
+		setMobileSidebarOpen(false);
+		toggleChatPreview(null);
 	};
 
 	return (
@@ -120,7 +139,7 @@ const Sidebar = () => {
 						className={`hidden lg:flex absolute top-4 ${
 							isRTL ? 'left-4' : 'right-4'
 						} items-center justify-center hover:bg-base-300 rounded-full transition-colors p-2 z-50`}
-						onClick={() => setSidebarPinned(!isPinned)} // <-- Use setSidebarPinned
+						onClick={() => setSidebarPinned(!isPinned)}
 						title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}>
 						{isPinned ? (
 							<BsPinAngleFill className='w-5 h-5' />
@@ -129,21 +148,24 @@ const Sidebar = () => {
 						)}
 					</button>
 
-					{/* Conditional Header Based on Device */}
+					{/* Conditional Header */}
 					{isMobile ? <MobileHeader /> : <SidebarHeader />}
 
-					{/* Token Section - New Prominent Position */}
+					{/* Token Section */}
 					<TokenSection className='px-4 py-2 mb-2' />
 
-					{/* Chat List - Expanded for Mobile */}
+					{/* Chat List */}
 					<div className='flex-1 overflow-y-auto px-2'>
 						<div className='flex items-center justify-between mb-4'>
 							<h3 className='text-md font-semibold text-base-content/50'>
 								{dict.sidebar.conversations}
 							</h3>
 							<LocaleLink
-								onClick={() => resetChat()}
-								href={`/chat`}
+								onClick={() => {
+									resetChat();
+									handleCloseSidebars();
+								}}
+								href='/chat'
 								className='flex items-center gap-4 text-blue-500 hover:bg-base-300 rounded-full transition-colors p-2'>
 								<PenBoxIcon className='w-6 h-6' />
 							</LocaleLink>
@@ -162,7 +184,7 @@ const Sidebar = () => {
 										persona={persona}
 										avatarUrl={avatarUrl}
 										chatTitle={chatTitle}
-										onSelect={() => setMobileSidebarOpen(false)}
+										onSelect={handleCloseSidebars}
 									/>
 								);
 							})}
@@ -174,11 +196,45 @@ const Sidebar = () => {
 				</div>
 			</div>
 
-			{/* Mobile Overlay */}
+			{/* Chat Preview Sidebar - Desktop */}
+			{showChatPreview && !isMobile && (
+				<div
+					className={`fixed top-0 ${
+						isRTL ? 'left-0' : 'right-0'
+					} w-80 h-full bg-base-200 shadow-lg transform transition-transform duration-200 ease-out z-30`}
+					style={{
+						transform: showChatPreview
+							? 'translateX(0)'
+							: `translateX(${isRTL ? '-100%' : '100%'})`,
+					}}>
+					<ChatPreview
+						chatId={previewChatId}
+						onClose={() => toggleChatPreview(null)}
+					/>
+				</div>
+			)}
+
+			{/* Chat Preview Modal - Mobile */}
+			{showChatPreview && isMobile && (
+				<>
+					<div
+						className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-40'
+						onClick={() => toggleChatPreview(null)}
+					/>
+					<div className='fixed top-0 left-0 right-0 h-2/3 bg-base-200 rounded-b-xl shadow-lg transform transition-all duration-200 ease-out z-50'>
+						<ChatPreview
+							chatId={previewChatId}
+							onClose={() => toggleChatPreview(null)}
+						/>
+					</div>
+				</>
+			)}
+
+			{/* Mobile Overlay for main sidebar */}
 			{mobileSidebarOpen && (
 				<div
 					className='fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30 lg:hidden transition-opacity duration-200'
-					onClick={() => setMobileSidebarOpen(false)}
+					onClick={handleCloseSidebars}
 				/>
 			)}
 		</>
