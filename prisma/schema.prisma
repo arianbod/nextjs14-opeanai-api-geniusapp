@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,50 +7,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enum for account status
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  DELETED
-}
-
 model User {
-  orderId          Int             @unique @default(autoincrement())
-  id               String          @id @default(uuid())
-  token            String          @unique
-  animalSelection  String
-  email            String?         @unique
-  tokenBalance     Int             @default(100)
-  chats            Chat[]
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  loginAttempts    Int             @default(0)
-  lastLoginAttempt DateTime?
-  payments Payment[]
-  // Renamed this field to userPreferences (lowerCamelCase)
-  userPreferences  UserPreferences?
-
-  // Enhanced security/tracking fields
-  status           UserStatus      @default(ACTIVE)
-  statusReason     String?
-  statusUpdatedAt  DateTime        @default(now())
-  statusUpdatedBy  String?         // Admin or system identifier
-  
-  // Email verification
-  isEmailVerified  Boolean         @default(false)
-  verificationToken String?        @unique
+  id                      String           @id @default(uuid())
+  token                   String           @unique
+  animalSelection         String
+  email                   String?          @unique
+  tokenBalance            Int              @default(100)
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  loginAttempts           Int              @default(0)
+  lastLoginAttempt        DateTime?
+  orderId                 Int              @unique @default(autoincrement())
+  isEmailVerified         Boolean          @default(false)
+  lastIpAddress           String?
+  lastTokenRotation       DateTime         @default(now())
+  lastUserAgent           String?
+  status                  UserStatus       @default(ACTIVE)
+  statusReason            String?
+  statusUpdatedAt         DateTime         @default(now())
+  statusUpdatedBy         String?
+  tokenVersion            Int              @default(1)
+  verificationToken       String?          @unique
   verificationTokenExpiry DateTime?
-
-  // Token security
-  lastTokenRotation DateTime       @default(now())
-  tokenVersion     Int             @default(1)
-
-  // Security tracking
-  lastIpAddress    String?
-  lastUserAgent    String?
-  // Audit trail: single JSON column each, storing array data
-  statusHistory    Json?           @default("[]")
-  loginHistory     Json?           @default("[]")
+  loginHistory            Json?            @default("[]")
+  statusHistory           Json?            @default("[]")
+  chats                   Chat[]
+  userPreferences         UserPreferences?
+  payments                Payment[]
 
   @@index([email])
   @@index([status])
@@ -60,69 +41,119 @@ model User {
 }
 
 model UserPreferences {
-  id               String    @id @default(uuid())
-  userId           String    @unique
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  currentLanguage  String    @default("en")
-  isSidebarPinned  Boolean   @default(true)
-
-  // Use a single Json column to store the array of entries
-  languageHistory  Json?     @default("[]")
-  userAgentHistory Json?     @default("[]")
-
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  currentLanguage  String   @default("en")
+  isSidebarPinned  Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  languageHistory  Json?    @default("[]")
+  userAgentHistory Json?    @default("[]")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 model Chat {
-  orderId      Int       @unique @default(autoincrement())
-  id           String    @id @default(uuid())
-  title        String
-  titleUpdated Boolean   @default(false)
-  userId       String
-  provider     String    @default("openai")
-  model        String    @default("o1-mini")
-  role         String    @default("user")
-  modelCodeName String   @default("o1-mini")
-  modelKey     String?
-  metadata     Json?     @default("{}")
+  id            String    @id @default(uuid())
+  title         String
+  titleUpdated  Boolean   @default(false)
+  userId        String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  model         String    @default("o1-mini")
+  provider      String    @default("openai")
+  modelCodeName String    @default("o1-mini")
+  role          String    @default("user")
+  orderId       Int       @unique @default(autoincrement())
+  metadata      Json?     @default("{}")
+  modelKey      String?
+  appId         Int       @default(1)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages      Message[]
 
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages     Message[]
-
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  @@index([userId])
 }
 
 model Message {
-  id           String       @id @default(uuid())
-  type         type         @default(TEXT)
-  content      String       @db.Text
-  contentData  Json?
-  format       String?
+  id           String        @id @default(uuid())
+  content      String
   role         String
   chatId       String
-  chat         Chat         @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  createdAt    DateTime     @default(now())
+  createdAt    DateTime      @default(now())
+  type         type          @default(TEXT)
+  contentData  Json?
+  format       String?
   fileMetadata FileMetadata?
+  chat         Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 
 model FileMetadata {
-  id              String   @id @default(uuid())
-  messageId       String   @unique
-  message         Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  fileName        String
-  fileType        String
-  fileSize        Int
-  uploadDate      DateTime @default(now())
-  contentSummary  String?  @db.Text
-  processingStatus String  @default("pending")
-  analysisResult  Json?
+  id               String   @id @default(uuid())
+  messageId        String   @unique
+  fileName         String
+  fileType         String
+  fileSize         Int
+  uploadDate       DateTime @default(now())
+  contentSummary   String?
+  processingStatus String   @default("pending")
+  analysisResult   Json?
+  message          Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
+model Payment {
+  id               String        @id @default(uuid())
+  userId           String
+  type             PaymentType   @default(TOKEN_PURCHASE)
+  packageName      String?
+  amount           Float
+  tokenAmount      Int
+  currency         String        @default("usd")
+  paymentMethod    String?
+  previousBalance  Int
+  expectedBalance  Int
+  finalBalance     Int?
+  stripeSessionId  String?       @unique
+  paymentIntentId  String?       @unique
+  stripeCustomerId String?
+  status           PaymentStatus @default(PENDING)
+  error            String?
+  errorCode        String?
+  ipAddress        String?
+  userAgent        String?
+  countryCode      String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  completedAt      DateTime?
+  expiresAt        DateTime?
+  metadata         Json?         @default("{}")
+  notes            String?
+  refundReason     String?
+  refundForId      String?
+  refundFor        Payment?      @relation("RefundRelation", fields: [refundForId], references: [id])
+  refunds          Payment[]     @relation("RefundRelation")
+  user             User          @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([stripeSessionId])
+  @@map("payments")
+}
+
+model Inapp {
+  appId   Int     @id @default(autoincrement())
+  appName String
+  appType String?
+  appUrl  String?
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
 
 enum PaymentStatus {
   PENDING
@@ -132,69 +163,11 @@ enum PaymentStatus {
   CANCELLED
 }
 
-// Payment Type enum for different payment categories
 enum PaymentType {
   TOKEN_PURCHASE
   SUBSCRIPTION
   REFUND
   OTHER
-}
-
-model Payment {
-  id                String        @id @default(uuid())
-  userId            String        // Removed @unique to allow multiple payments
-  user              User          @relation(fields: [userId], references: [id])
-  
-  // Payment details
-  type              PaymentType   @default(TOKEN_PURCHASE)
-  packageName       String?       // e.g., "Basic", "Premium", "Pro"
-  amount            Float         // Amount user is paying in USD
-  tokenAmount       Int          // Number of tokens being purchased
-  currency          String        @default("usd")
-  paymentMethod     String?       // Payment method used (e.g., "card")
-  
-  // Balance tracking
-  previousBalance   Int          // User's token balance before payment
-  expectedBalance   Int          // Expected balance after payment (previousBalance + tokenAmount)
-  finalBalance      Int?         // Actual final balance after payment completion
-  
-  // Stripe-specific fields
-  stripeSessionId   String?       @unique
-  paymentIntentId   String?       @unique
-  stripeCustomerId  String?       // Store Stripe customer ID if available
-  
-  // Status and error handling
-  status            PaymentStatus @default(PENDING)
-  error             String?       // Error message if payment failed
-  errorCode         String?       // Error code for categorization
-  
-  // Security and tracking
-  ipAddress         String?       // IP address of the payment attempt
-  userAgent         String?       // User agent of the payment attempt
-  countryCode       String?       // Country where payment was initiated
-  
-  // Timestamps
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  completedAt       DateTime?     // When payment was completed
-  expiresAt         DateTime?     // When pending payment expires
-  
-  // Additional metadata
-  metadata          Json?         @default("{}")
-  notes             String?       // Admin notes or comments
-  refundReason      String?       // Reason if payment was refunded
-  
-  // For refunds, reference to original payment
-  refundForId       String?       // ID of the original payment if this is a refund
-  refundFor         Payment?      @relation("RefundRelation", fields: [refundForId], references: [id])
-  refunds           Payment[]     @relation("RefundRelation")
-
-  @@index([userId])
-  @@index([status])
-  @@index([type])
-  @@index([createdAt])
-  @@index([stripeSessionId])
-  @@map("payments")
 }
 
 enum type {
