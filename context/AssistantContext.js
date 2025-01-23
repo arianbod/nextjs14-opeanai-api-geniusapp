@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { nanoid } from 'nanoid';
 import { AIPersonas } from '@/lib/Personas';
 import toast from 'react-hot-toast';
+import { serverLogger } from '@/server/logger';
 
 const WEBSITE_USER = process.env.WEBSITE_USER || 'babagpt.ai';
 
@@ -31,6 +32,7 @@ export const AssistantProvider = ({ children }) => {
     const toggleAssistant = useCallback(() => {
         setIsOpen(prev => !prev);
         setIsMinimized(false);
+        initializeChat()
     }, []);
 
     // Minimize/maximize assistant panel
@@ -40,6 +42,7 @@ export const AssistantProvider = ({ children }) => {
 
     // Initialize chat session
     const initializeChat = useCallback(async () => {
+        serverLogger("initialize", assistantChatId)
         // Only initialize if not already initialized
         if (assistantChatId || isLoading) return;
 
