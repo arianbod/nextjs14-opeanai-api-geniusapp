@@ -17,6 +17,8 @@ export const AssistantProvider = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    // Added: Separate loading state for message sending
+    const [isSending, setIsSending] = useState(false);
 
     // Chat States
     const [assistantChatId, setAssistantChatId] = useState(null);
@@ -38,6 +40,9 @@ export const AssistantProvider = ({ children }) => {
 
     // Initialize chat session
     const initializeChat = useCallback(async () => {
+        // Only initialize if not already initialized
+        if (assistantChatId || isLoading) return;
+
         try {
             setIsLoading(true);
             const tempChatId = nanoid();
@@ -53,32 +58,36 @@ export const AssistantProvider = ({ children }) => {
                 timestamp: new Date().toISOString()
             };
 
-            // If logged in user, create chat in backend
-            if (user?.userId) {
-                try {
-                    await fetch('/api/chat/createChat', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: user.userId,
-                            initialMessage: welcomeMessage.content,
-                            model: {
-                                name: supportModel.name,
-                                provider: supportModel.provider,
-                                modelCodeName: supportModel.modelCodeName,
-                                role: supportModel.role
-                            }
-                        })
-                    });
-                } catch (error) {
-                    console.error('Error creating chat:', error);
-                }
-            }
+            try {
+                const response = await fetch('/api/chat/createChat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: WEBSITE_USER,
+                        initialMessage: welcomeMessage.content,
+                        model: {
+                            name: supportModel.name,
+                            provider: supportModel.provider,
+                            modelCodeName: supportModel.modelCodeName,
+                            role: supportModel.role
+                        }
+                    })
+                });
 
-            setMessages([welcomeMessage]);
+                if (!response.ok) {
+                    throw new Error('Failed to create chat');
+                }
+
+                setMessages([welcomeMessage]);
+            } catch (error) {
+                console.error('Error creating chat:', error);
+                toast.error('Failed to initialize chat. Please try again.');
+                setAssistantChatId(null);
+            }
         } catch (error) {
             console.error('Error initializing assistant chat:', error);
             toast.error('Failed to initialize chat assistant');
+            setAssistantChatId(null);
         } finally {
             setIsLoading(false);
         }
@@ -138,9 +147,10 @@ export const AssistantProvider = ({ children }) => {
 
     // Send message to assistant
     const sendMessage = useCallback(async (content) => {
-        if (!content?.trim() || !assistantChatId) return;
+        if (!content?.trim() || !assistantChatId || isSending) return;
 
         try {
+            setIsSending(true);
             // Add user message immediately
             const userMessage = {
                 id: nanoid(),
@@ -187,8 +197,10 @@ export const AssistantProvider = ({ children }) => {
                 timestamp: new Date().toISOString()
             }]);
             toast.error('Failed to process message');
+        } finally {
+            setIsSending(false);
         }
-    }, [assistantChatId, supportModel, user]);
+    }, [assistantChatId, supportModel]);
 
     // Reset assistant state
     const resetAssistant = useCallback(() => {
@@ -196,12 +208,14 @@ export const AssistantProvider = ({ children }) => {
         setAssistantChatId(null);
         setIsMinimized(false);
         setIsOpen(false);
+        setIsLoading(false);
+        setIsSending(false);
     }, []);
 
     const value = {
         isOpen,
         isMinimized,
-        isLoading,
+        isLoading: isLoading || isSending, // Combine loading states for external consumers
         messages,
         toggleAssistant,
         toggleMinimize,
