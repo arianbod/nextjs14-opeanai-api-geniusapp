@@ -51,7 +51,7 @@ const AssistantPanel = () => {
 					className={`flex items-center justify-between ${
 						isMinimized ? 'p-2' : 'p-4'
 					} border-b border-base-300 bg-base-200`}>
-					{!isMinimized && <h2 className='text-lg font-semibold'>Assistant</h2>}
+					{!isMinimized && <h2 className='text-lg font-semibold'>Baba AI Assistant</h2>}
 					<div className='flex items-center gap-2 ml-auto'>
 						<button
 							onClick={toggleMinimize}
