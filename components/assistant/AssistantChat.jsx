@@ -1,14 +1,14 @@
+// components/assistant/AssistantChat.jsx
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import { useAssistant } from '@/context/AssistantContext';
-import { motion } from 'framer-motion';
-import { useAuth } from '@/context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import TypingIndicator from './TypingIndicator';
 
 const AssistantChat = () => {
 	const { messages, sendMessage, isLoading } = useAssistant();
-	const { user } = useAuth();
 	const [input, setInput] = useState('');
 	const messagesEndRef = useRef(null);
 
@@ -18,7 +18,7 @@ const AssistantChat = () => {
 
 	useEffect(() => {
 		scrollToBottom();
-	}, [messages]);
+	}, [messages, isLoading]);
 
 	const handleSubmit = (e) => {
 		e.preventDefault();
@@ -50,6 +50,19 @@ const AssistantChat = () => {
 						</div>
 					</motion.div>
 				))}
+
+				{/* Typing Indicator */}
+				<AnimatePresence>
+					{isLoading && (
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: 10 }}
+							className='flex justify-start'>
+							<TypingIndicator />
+						</motion.div>
+					)}
+				</AnimatePresence>
 				<div ref={messagesEndRef} />
 			</div>
 
