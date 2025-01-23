@@ -31,7 +31,7 @@ const AssistantButton = () => {
 			{/* Close button */}
 			<button
 				onClick={hideButton}
-				className='absolute -top-2 -right-2 p-1 rounded-full bg-base-100 shadow-md hover:bg-base-200 transition-colors z-10'
+				className='absolute -top-2 -right-2 p-1 rounded-full bg-base-100 shadow-md hover:bg-base-200 transition-colors z-30'
 				aria-label='Hide Assistant Button'>
 				<X className='w-3 h-3' />
 			</button>

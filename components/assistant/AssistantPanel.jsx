@@ -2,28 +2,26 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { X, RotateCcw } from 'lucide-react';
+import { X, Minimize2, Maximize2 } from 'lucide-react';
 import { useAssistant } from '@/context/AssistantContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import AssistantChat from './AssistantChat';
-import Image from 'next/image';
 
 const AssistantPanel = () => {
-	const { isOpen, toggleAssistant, resetAssistant, initializeChat } =
-		useAssistant();
-
+	const {
+		isOpen,
+		isMinimized,
+		toggleAssistant,
+		toggleMinimize,
+		initializeChat,
+	} = useAssistant();
 	const panelRef = useRef(null);
 
 	useEffect(() => {
-		if (isOpen) {
+		if (isOpen && !isMinimized && !panelRef.current) {
 			initializeChat();
 		}
-	}, [isOpen, initializeChat]);
-
-	const handleReset = () => {
-		resetAssistant();
-		initializeChat();
-	};
+	}, [isOpen, isMinimized, initializeChat]);
 
 	if (!isOpen) return null;
 
@@ -31,55 +29,57 @@ const AssistantPanel = () => {
 		<AnimatePresence>
 			<motion.div
 				ref={panelRef}
-				className='fixed bottom-0 right-0 sm:bottom-24 sm:right-6
-                          w-full sm:w-[450px] h-[100vh] sm:h-[600px]
-                          sm:max-w-[95vw] sm:max-h-[90vh]
-                          bg-base-100 shadow-2xl  z-40 
-                          sm:rounded-lg sm:border border-base-300
-                          flex flex-col'
+				className={`fixed ${
+					isMinimized
+						? 'bottom-20 right-6 w-14 h-14'
+						: `bottom-20 right-6 w-[90vw] sm:w-[380px] h-[500px] 
+                           max-h-[calc(100vh-160px)]` // Increased space from bottom
+				} 
+                           bg-base-100 rounded-lg shadow-2xl overflow-hidden z-40 
+                           border border-base-300`}
 				initial={{ opacity: 0, y: 50, scale: 0.9 }}
 				animate={{ opacity: 1, y: 0, scale: 1 }}
 				exit={{ opacity: 0, y: 50, scale: 0.9 }}
-				transition={{ type: 'spring', damping: 20, stiffness: 300 }}>
+				transition={{
+					type: 'spring',
+					damping: 20,
+					stiffness: 300,
+					duration: 0.2,
+				}}>
 				{/* Header */}
-				<div className='flex items-center justify-between px-4 py-3 bg-[#0095ff] text-white rounded-t-xl'>
-					{/* Left side: Logo and Title */}
-					<div className='flex items-center gap-3'>
-						<div className='w-8 h-8 relative rounded-full overflow-hidden bg-white/10 flex-shrink-0'>
-							<Image
-								src='/baba-ai-assistant-logo.png'
-								alt='BabaAI Assistant'
-								fill
-								className='object-cover'
-								priority
-							/>
-						</div>
-						<div>
-							<h2 className='text-lg font-medium'>BabaAI Assistant</h2>
-							<p className='text-xs opacity-90'>Online</p>
-						</div>
-					</div>
-
-					{/* Right side: Action Buttons */}
-					<div className='flex items-center gap-2'>
+				<div
+					className={`flex items-center justify-between ${
+						isMinimized ? 'p-2' : 'p-4'
+					} border-b border-base-300 bg-base-200`}>
+					{!isMinimized && <h2 className='text-lg font-semibold'>Assistant</h2>}
+					<div className='flex items-center gap-2 ml-auto'>
 						<button
-							onClick={handleReset}
-							className='p-2 hover:bg-white/10 rounded-full transition-colors'
-							aria-label='Reset Chat'>
-							<RotateCcw className='w-5 h-5' />
+							onClick={toggleMinimize}
+							className='p-1 hover:bg-base-300 rounded-full transition-colors'
+							aria-label={isMinimized ? 'Maximize chat' : 'Minimize chat'}>
+							{isMinimized ? (
+								<Maximize2 className='w-5 h-5' />
+							) : (
+								<Minimize2 className='w-5 h-5' />
+							)}
 						</button>
-						<button
-							onClick={toggleAssistant}
-							className='p-2 hover:bg-white/10 rounded-full transition-colors'
-							aria-label='Close'>
-							<X className='w-5 h-5' />
-						</button>
+						{!isMinimized && (
+							<button
+								onClick={toggleAssistant}
+								className='p-1 hover:bg-base-300 rounded-full transition-colors'
+								aria-label='Close chat'>
+								<X className='w-5 h-5' />
+							</button>
+						)}
 					</div>
 				</div>
 
-				{/* Chat Area with no padding */}
-				<div className='flex-1 overflow-hidden'>
-					<AssistantChat />
+				{/* Chat Area - Fixed height container */}
+				<div
+					className={`transition-all duration-200 ${
+						isMinimized ? 'h-0' : 'h-[calc(100%-56px)]'
+					} overflow-hidden`}>
+					{!isMinimized && <AssistantChat />}
 				</div>
 			</motion.div>
 		</AnimatePresence>
