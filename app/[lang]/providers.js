@@ -11,6 +11,7 @@ import { TranslationsProvider } from '@/context/TranslationContext'
 import ErrorBoundary from '@/components/ErrorBoundry'
 import { PreferencesProvider } from '@/context/preferencesContext'
 import { PaymentProvider } from '@/context/PaymentContext'
+import { AssistantProvider } from '@/context/AssistantContext'
 
 const Providers = ({ children, translations, lang }) => {
 
@@ -36,7 +37,9 @@ const Providers = ({ children, translations, lang }) => {
                             <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
                                 <ChatProvider>
                                     <PaymentProvider>
-                                        {children}
+                                        <AssistantProvider>
+                                            {children}
+                                        </AssistantProvider>
                                     </PaymentProvider>
                                 </ChatProvider>
                             </ThemeProvider>

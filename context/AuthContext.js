@@ -87,34 +87,25 @@ export const AuthProvider = ({ children }) => {
                 status: userData.status || 'ACTIVE'
             };
 
+            // Set user data in localStorage and cookies first
             localStorage.setItem("user", JSON.stringify(userDataToStore));
             const expires = new Date(timestamp + SESSION_DURATION).toUTCString();
             document.cookie = `user=${encodeURIComponent(JSON.stringify(userDataToStore))}; path=/; expires=${expires}; SameSite=Lax`;
 
+            // Update state
             setUser(userDataToStore);
-            await syncTokenBalance(); // Fetch initial token balance from server
             setIsEmailVerified(userData.isEmailVerified || false);
             setAccountStatus(userData.status || 'ACTIVE');
 
+            // Sync token balance
+            await syncTokenBalance();
+
+            // Get current language
             const lang = window.location.pathname.split('/')[1] || 'en';
-            try {
-                const response = await fetch('/api/chat/getChatList', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: userData.userId }),
-                });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const isNewUser = !data.chats?.length;
-                    return { success: true, isNewUser, lang };
-                }
-            } catch (error) {
-                console.error('Error checking chat list:', error);
-                return { success: true, isNewUser: false, lang };
-            }
-
+            // Return success without checking chat list
             return { success: true, isNewUser: false, lang };
+
         } catch (error) {
             console.error("Error setting auth data:", error);
             return { success: false, error: "Failed to store authentication data" };
@@ -195,6 +186,7 @@ export const AuthProvider = ({ children }) => {
             };
         }
     };
+
     const verifyEmail = async (token) => {
         if (!user?.userId) {
             return { success: false, error: "User not authenticated" };

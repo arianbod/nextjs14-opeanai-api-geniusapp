@@ -7,6 +7,7 @@ import en from '@/lib/dic/en.json';
 import { getDictionary } from '@/lib/dictionary';
 import { Vazirmatn, Noto_Sans_Arabic } from 'next/font/google';
 import { supportedLanguages, RTL_LANGUAGES } from '@/lib/supportedLanguages';
+import AssistantWrapper from '@/components/assistant/AssistantWrapper';
 
 // Initialize the fonts
 const vazirmatn = Vazirmatn({
@@ -99,6 +100,7 @@ export default async function RootLayout({ params, children }) {
             }}
           />
           {children}
+          <AssistantWrapper />
         </Providers>
         <GoogleAnalytics gaId="G-3T0PFBNMPY" />
       </body>

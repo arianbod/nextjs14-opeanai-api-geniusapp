@@ -17,7 +17,19 @@ interface UserAgentEntry {
 	device: string;
 	timestamp: string;
 }
-
+// Default preferences for website user
+const DEFAULT_PREFERENCES = {
+	currentLanguage: 'en',
+	isSidebarPinned: true,
+	languageHistory: [
+		{
+			code: 'en',
+			name: 'English',
+			lastUsed: new Date().toISOString(),
+			useCount: 1,
+		},
+	],
+};
 // Added retry mechanism for database operations
 async function withRetry<T>(
 	operation: () => Promise<T>,
@@ -68,16 +80,29 @@ export async function initializeUserPreferences(userId: string) {
 }
 
 export async function getUserPreferences(userId: string) {
+	// Handle website user
+	if (userId === process.env.NEXT_PUBLIC_WEBSITE_USER) {
+		return DEFAULT_PREFERENCES;
+	}
+
 	const user = await getUserById(userId);
-	if (!user) throw new Error('User not found');
+	if (!user) {
+		// Return default preferences instead of throwing error
+		return DEFAULT_PREFERENCES;
+	}
 
 	return await withRetry(async () => {
 		let preferences = await prisma.userPreferences.findUnique({
-			where: { userId: user.id },
+			where: { userId },
 		});
 
 		if (!preferences) {
-			preferences = await initializeUserPreferences(userId);
+			preferences = await prisma.userPreferences.create({
+				data: {
+					userId,
+					...DEFAULT_PREFERENCES,
+				},
+			});
 		}
 
 		return preferences;
