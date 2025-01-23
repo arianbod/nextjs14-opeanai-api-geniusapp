@@ -24,13 +24,24 @@ const AssistantButton = () => {
 	const [position, setPosition] = useState(null);
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+	const [isMobile, setIsMobile] = useState(false);
+
+	// Check if device is mobile
+	useEffect(() => {
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth <= 768);
+		};
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+		return () => window.removeEventListener('resize', checkMobile);
+	}, []);
 
 	// Calculate initial position
 	const calculateInitialPosition = useCallback(() => {
 		const viewportWidth = window.innerWidth;
 		const viewportHeight = window.innerHeight;
-		const buttonWidth = 280; // Wider to accommodate the new design
-		const buttonHeight = 64; // Taller for the avatar and text
+		const buttonWidth = 280;
+		const buttonHeight = 72; // Increased for better touch target
 		const margin = 24;
 
 		return {
@@ -66,51 +77,65 @@ const AssistantButton = () => {
 		}
 	}, []);
 
-	// Handle mouse down event to start dragging
-	const handleMouseDown = useCallback(
+	// Handle touch/mouse events for dragging
+	const handleStart = useCallback(
 		(e) => {
+			if (isMobile) return; // Disable dragging on mobile
+
+			const clientX = e.type.includes('mouse')
+				? e.clientX
+				: e.touches[0].clientX;
+			const clientY = e.type.includes('mouse')
+				? e.clientY
+				: e.touches[0].clientY;
+
 			if (e.target.closest('.drag-handle')) {
 				setIsDragging(true);
 				setDragStart({
-					x: e.clientX - position.x,
-					y: e.clientY - position.y,
+					x: clientX - position.x,
+					y: clientY - position.y,
 				});
 			}
 		},
-		[position]
+		[position, isMobile]
 	);
 
-	// Handle mouse move event during dragging
-	const handleMouseMove = useCallback(
+	const handleMove = useCallback(
 		(e) => {
-			if (isDragging && position) {
-				const newPosition = {
-					x: e.clientX - dragStart.x,
-					y: e.clientY - dragStart.y,
-				};
+			if (!isDragging || !position || isMobile) return;
 
-				const viewportWidth = window.innerWidth;
-				const viewportHeight = window.innerHeight;
-				const buttonWidth = 280;
-				const buttonHeight = 64;
+			const clientX = e.type.includes('mouse')
+				? e.clientX
+				: e.touches[0].clientX;
+			const clientY = e.type.includes('mouse')
+				? e.clientY
+				: e.touches[0].clientY;
 
-				newPosition.x = Math.max(
-					0,
-					Math.min(viewportWidth - buttonWidth, newPosition.x)
-				);
-				newPosition.y = Math.max(
-					0,
-					Math.min(viewportHeight - buttonHeight, newPosition.y)
-				);
+			const newPosition = {
+				x: clientX - dragStart.x,
+				y: clientY - dragStart.y,
+			};
 
-				setPosition(newPosition);
-			}
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
+			const buttonWidth = 280;
+			const buttonHeight = 72;
+
+			newPosition.x = Math.max(
+				0,
+				Math.min(viewportWidth - buttonWidth, newPosition.x)
+			);
+			newPosition.y = Math.max(
+				0,
+				Math.min(viewportHeight - buttonHeight, newPosition.y)
+			);
+
+			setPosition(newPosition);
 		},
-		[isDragging, dragStart, position]
+		[isDragging, dragStart, position, isMobile]
 	);
 
-	// Handle mouse up event to stop dragging
-	const handleMouseUp = useCallback(() => {
+	const handleEnd = useCallback(() => {
 		if (isDragging) {
 			setIsDragging(false);
 			localStorage.setItem('assistantButtonPosition', JSON.stringify(position));
@@ -119,16 +144,28 @@ const AssistantButton = () => {
 
 	// Add and remove event listeners
 	useEffect(() => {
-		document.addEventListener('mousemove', handleMouseMove);
-		document.addEventListener('mouseup', handleMouseUp);
-		document.addEventListener('mousedown', handleMouseDown);
+		// Mouse events
+		document.addEventListener('mousedown', handleStart);
+		document.addEventListener('mousemove', handleMove);
+		document.addEventListener('mouseup', handleEnd);
+
+		// Touch events
+		document.addEventListener('touchstart', handleStart, { passive: true });
+		document.addEventListener('touchmove', handleMove, { passive: false });
+		document.addEventListener('touchend', handleEnd);
 
 		return () => {
-			document.removeEventListener('mousemove', handleMouseMove);
-			document.removeEventListener('mouseup', handleMouseUp);
-			document.removeEventListener('mousedown', handleMouseDown);
+			// Clean up mouse events
+			document.removeEventListener('mousedown', handleStart);
+			document.removeEventListener('mousemove', handleMove);
+			document.removeEventListener('mouseup', handleEnd);
+
+			// Clean up touch events
+			document.removeEventListener('touchstart', handleStart);
+			document.removeEventListener('touchmove', handleMove);
+			document.removeEventListener('touchend', handleEnd);
 		};
-	}, [handleMouseMove, handleMouseUp, handleMouseDown]);
+	}, [handleStart, handleMove, handleEnd]);
 
 	const hideButtonTemporarily = () => {
 		setIsButtonVisible(false);
@@ -149,7 +186,12 @@ const AssistantButton = () => {
 				className='fixed z-50'
 				style={{
 					transform: `translate(${position.x}px, ${position.y}px)`,
-					cursor: isDragging ? 'grabbing' : 'grab',
+					cursor:
+						isDragging && !isMobile
+							? 'grabbing'
+							: isMobile
+							? 'default'
+							: 'grab',
 				}}>
 				{/* Close button */}
 				<button
@@ -163,20 +205,21 @@ const AssistantButton = () => {
 				<motion.button
 					onClick={toggleAssistant}
 					className='flex items-center gap-3 p-3 pr-6 rounded-lg bg-white text-primary shadow-lg hover:shadow-xl transition-all duration-300 drag-handle border border-gray-200'
-					whileHover={{ scale: 1.02 }}
-					whileTap={{ scale: 0.98 }}
+					whileHover={{ scale: isMobile ? 1 : 1.02 }}
+					whileTap={{ scale: isMobile ? 0.98 : 0.98 }}
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}>
 					{/* Avatar container with online indicator */}
 					<div className='relative'>
-						<div className='w-10 h-10 rounded-full overflow-hidden border-2 border-primary'>
+						<div className='w-12 h-12 rounded-full overflow-hidden border-2 border-primary relative'>
+							<div className='absolute inset-0 bg-green-800' />
 							<Image
 								alt='Assistant Avatar'
 								src='/images/babagpt_bw.svg'
-								width={64}
-								height={64}
-								// fill='contain'
-								className='bg-green-800 w-full h-full object-cover'
+								width={48}
+								height={48}
+								className='relative z-10 object-contain'
+								priority
 							/>
 						</div>
 						{/* Online indicator */}
