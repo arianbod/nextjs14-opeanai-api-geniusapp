@@ -26,7 +26,7 @@ export const AssistantProvider = ({ children }) => {
     const [messages, setMessages] = useState([]);
 
     // Support model configuration
-    const supportModel = AIPersonas.find(p => p.key === 'deepseekAsisstant');
+    const supportModel = AIPersonas.find(p => p.key === 'claude-3-5-sonnet-latest-helper');
 
     // Toggle assistant visibility
     const toggleAssistant = useCallback(() => {
