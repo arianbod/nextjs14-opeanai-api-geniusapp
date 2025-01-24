@@ -370,7 +370,7 @@
 		}
 	},
 	"chatInterface": {
-		"searchInModels": "Select an AI Model",
+		"searchInModels": "All models fine-tuned by Baba.AI Inc",
 		"greetings": {
 			"askAnythingTitle": "👋 Ask Anything!",
 			"askAnythingSubtitle": "From quick questions to deep discussions, I'm here for you.",

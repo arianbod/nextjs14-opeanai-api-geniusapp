@@ -29,6 +29,6 @@
 		"**/*.js",
 		"**/*.jsx",
 		".next/types/**/*.ts"
-	],
+, "paymentFakeDataREsult.env"	],
 	"exclude": ["node_modules"]
 }
