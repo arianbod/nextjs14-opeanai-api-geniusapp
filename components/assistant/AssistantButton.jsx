@@ -1,7 +1,7 @@
 // components/assistant/AssistantButton.jsx
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MessageCircleQuestion, X } from 'lucide-react';
 import { useAssistant } from '@/context/AssistantContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,54 +21,75 @@ const AssistantButton = () => {
 	const { toggleAssistant, isOpen } = useAssistant();
 	const [isButtonVisible, setIsButtonVisible] = useState(true);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [position, setPosition] = useState(null);
-	const [isDragging, setIsDragging] = useState(false);
-	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-	const [isMobile, setIsMobile] = useState(false);
+	const [position, setPosition] = useState({ x: 0, y: 0 });
+	const [showWelcome, setShowWelcome] = useState(true);
+	const [bounds, setBounds] = useState({
+		left: 0,
+		top: 0,
+		right: 0,
+		bottom: 0,
+	});
+	const buttonRef = useRef(null);
 
-	// Check if device is mobile
+	// Hide welcome message after delay
 	useEffect(() => {
-		const checkMobile = () => {
-			setIsMobile(window.innerWidth <= 768);
-		};
-		checkMobile();
-		window.addEventListener('resize', checkMobile);
-		return () => window.removeEventListener('resize', checkMobile);
+		const timer = setTimeout(() => {
+			setShowWelcome(false);
+		}, 5000);
+		return () => clearTimeout(timer);
 	}, []);
 
-	// Calculate initial position
-	const calculateInitialPosition = useCallback(() => {
-		const viewportWidth = window.innerWidth;
-		const viewportHeight = window.innerHeight;
-		const buttonWidth = 280;
-		const buttonHeight = 72; // Increased for better touch target
-		const margin = 24;
-
-		return {
-			x: viewportWidth - buttonWidth - margin,
-			y: viewportHeight - buttonHeight - margin,
-		};
-	}, []);
-
-	// Initialize position on mount and handle window resize
+	// Calculate initial position and bounds
 	useEffect(() => {
-		const savedPosition = localStorage.getItem('assistantButtonPosition');
+		const calculatePositionAndBounds = () => {
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
 
-		if (savedPosition) {
-			setPosition(JSON.parse(savedPosition));
-		} else {
-			setPosition(calculateInitialPosition());
-		}
+			const buttonWidth = buttonRef.current?.offsetWidth || 280;
+			const buttonHeight = buttonRef.current?.offsetHeight || 72;
+			const margin = 24;
 
-		const handleResize = () => {
-			if (!localStorage.getItem('assistantButtonPosition')) {
-				setPosition(calculateInitialPosition());
+			setBounds({
+				left: margin,
+				top: margin,
+				right: viewportWidth - buttonWidth - margin,
+				bottom: viewportHeight - buttonHeight - margin,
+			});
+
+			const savedPosition = localStorage.getItem('assistantButtonPosition');
+			if (savedPosition) {
+				const parsed = JSON.parse(savedPosition);
+				const x = Math.min(
+					Math.max(parsed.x, margin),
+					viewportWidth - buttonWidth - margin
+				);
+				const y = Math.min(
+					Math.max(parsed.y, margin),
+					viewportHeight - buttonHeight - margin
+				);
+				setPosition({ x, y });
+			} else {
+				setPosition({
+					x: viewportWidth - buttonWidth - margin,
+					y: viewportHeight - buttonHeight - margin,
+				});
 			}
 		};
 
+		calculatePositionAndBounds();
+
+		let resizeTimer;
+		const handleResize = () => {
+			clearTimeout(resizeTimer);
+			resizeTimer = setTimeout(calculatePositionAndBounds, 100);
+		};
+
 		window.addEventListener('resize', handleResize);
-		return () => window.removeEventListener('resize', handleResize);
-	}, [calculateInitialPosition]);
+		return () => {
+			window.removeEventListener('resize', handleResize);
+			clearTimeout(resizeTimer);
+		};
+	}, []);
 
 	useEffect(() => {
 		const hidden = localStorage.getItem('assistantButtonHidden');
@@ -77,95 +98,17 @@ const AssistantButton = () => {
 		}
 	}, []);
 
-	// Handle touch/mouse events for dragging
-	const handleStart = useCallback(
-		(e) => {
-			if (isMobile) return; // Disable dragging on mobile
-
-			const clientX = e.type.includes('mouse')
-				? e.clientX
-				: e.touches[0].clientX;
-			const clientY = e.type.includes('mouse')
-				? e.clientY
-				: e.touches[0].clientY;
-
-			if (e.target.closest('.drag-handle')) {
-				setIsDragging(true);
-				setDragStart({
-					x: clientX - position.x,
-					y: clientY - position.y,
-				});
-			}
-		},
-		[position, isMobile]
-	);
-
-	const handleMove = useCallback(
-		(e) => {
-			if (!isDragging || !position || isMobile) return;
-
-			const clientX = e.type.includes('mouse')
-				? e.clientX
-				: e.touches[0].clientX;
-			const clientY = e.type.includes('mouse')
-				? e.clientY
-				: e.touches[0].clientY;
-
-			const newPosition = {
-				x: clientX - dragStart.x,
-				y: clientY - dragStart.y,
-			};
-
-			const viewportWidth = window.innerWidth;
-			const viewportHeight = window.innerHeight;
-			const buttonWidth = 280;
-			const buttonHeight = 72;
-
-			newPosition.x = Math.max(
-				0,
-				Math.min(viewportWidth - buttonWidth, newPosition.x)
-			);
-			newPosition.y = Math.max(
-				0,
-				Math.min(viewportHeight - buttonHeight, newPosition.y)
-			);
-
-			setPosition(newPosition);
-		},
-		[isDragging, dragStart, position, isMobile]
-	);
-
-	const handleEnd = useCallback(() => {
-		if (isDragging) {
-			setIsDragging(false);
-			localStorage.setItem('assistantButtonPosition', JSON.stringify(position));
-		}
-	}, [isDragging, position]);
-
-	// Add and remove event listeners
-	useEffect(() => {
-		// Mouse events
-		document.addEventListener('mousedown', handleStart);
-		document.addEventListener('mousemove', handleMove);
-		document.addEventListener('mouseup', handleEnd);
-
-		// Touch events
-		document.addEventListener('touchstart', handleStart, { passive: true });
-		document.addEventListener('touchmove', handleMove, { passive: false });
-		document.addEventListener('touchend', handleEnd);
-
-		return () => {
-			// Clean up mouse events
-			document.removeEventListener('mousedown', handleStart);
-			document.removeEventListener('mousemove', handleMove);
-			document.removeEventListener('mouseup', handleEnd);
-
-			// Clean up touch events
-			document.removeEventListener('touchstart', handleStart);
-			document.removeEventListener('touchmove', handleMove);
-			document.removeEventListener('touchend', handleEnd);
+	const handleDragEnd = (event, info) => {
+		const newPosition = {
+			x: Math.min(Math.max(info.point.x, bounds.left), bounds.right),
+			y: Math.min(Math.max(info.point.y, bounds.top), bounds.bottom),
 		};
-	}, [handleStart, handleMove, handleEnd]);
+		setPosition(newPosition);
+		localStorage.setItem(
+			'assistantButtonPosition',
+			JSON.stringify(newPosition)
+		);
+	};
 
 	const hideButtonTemporarily = () => {
 		setIsButtonVisible(false);
@@ -178,21 +121,34 @@ const AssistantButton = () => {
 		setIsDialogOpen(false);
 	};
 
-	if (!isButtonVisible || !position) return null;
+	if (!isButtonVisible) return null;
 
 	return (
 		<>
-			<div
-				className='fixed z-50'
-				style={{
-					transform: `translate(${position.x}px, ${position.y}px)`,
-					cursor:
-						isDragging && !isMobile
-							? 'grabbing'
-							: isMobile
-							? 'default'
-							: 'grab',
-				}}>
+			<motion.div
+				ref={buttonRef}
+				className='fixed z-50 touch-none'
+				initial={{ x: position.x, y: position.y, scale: 0.8, opacity: 0 }}
+				animate={{ x: position.x, y: position.y, scale: 1, opacity: 1 }}
+				transition={{ type: 'spring', duration: 0.7 }}
+				drag
+				dragConstraints={bounds}
+				dragElastic={0}
+				dragMomentum={false}
+				onDragEnd={handleDragEnd}>
+				{/* Welcome Message */}
+				<AnimatePresence>
+					{showWelcome && (
+						<motion.div
+							initial={{ opacity: 0, y: -20 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: 10 }}
+							className='absolute -top-16 right-0 bg-white p-3 rounded-lg shadow-md text-sm whitespace-nowrap'>
+							👋 Hi! How can I help you today?
+						</motion.div>
+					)}
+				</AnimatePresence>
+
 				{/* Close button */}
 				<button
 					onClick={() => setIsDialogOpen(true)}
@@ -202,39 +158,58 @@ const AssistantButton = () => {
 				</button>
 
 				{/* Main button */}
-				<motion.button
-					onClick={toggleAssistant}
-					className='flex items-center gap-3 p-3 pr-6 rounded-lg bg-white text-primary shadow-lg hover:shadow-xl transition-all duration-300 drag-handle border border-gray-200'
-					whileHover={{ scale: isMobile ? 1 : 1.02 }}
-					whileTap={{ scale: isMobile ? 0.98 : 0.98 }}
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}>
+				<motion.div
+					className='group select-none flex items-center gap-3 p-3 pr-6 rounded-lg bg-white/95 backdrop-blur-sm text-primary shadow-lg hover:shadow-xl transition-all duration-300 cursor-move border border-gray-200'
+					whileHover={{ scale: 1.02 }}
+					whileTap={{ scale: 0.98 }}
+					onClick={toggleAssistant}>
 					{/* Avatar container with online indicator */}
 					<div className='relative'>
-						<div className='w-12 h-12 rounded-full overflow-hidden border-2 border-primary relative'>
+						<div className='select-none w-12 h-12 rounded-full overflow-hidden border-2 border-primary relative'>
 							<div className='absolute inset-0 bg-green-800' />
 							<Image
 								alt='Assistant Avatar'
 								src='/images/babagpt_bw.svg'
 								width={48}
 								height={48}
-								className='relative z-10 object-contain'
+								className='select-none relative z-10 object-contain'
 								priority
 							/>
 						</div>
-						{/* Online indicator */}
-						<div className='absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white' />
+						{/* Animated online indicator */}
+						<motion.div
+							className='select-none absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white'
+							animate={{
+								scale: [1, 1.2, 1],
+								opacity: [1, 0.8, 1],
+							}}
+							transition={{
+								duration: 2,
+								repeat: Infinity,
+								ease: 'easeInOut',
+							}}
+						/>
 					</div>
 
 					{/* Text content */}
 					<div className='flex flex-col items-start'>
-						<span className='text-sm font-medium text-gray-900'>
+						<span className='select-none text-sm font-medium text-gray-900'>
 							Baba AI Assistant
 						</span>
-						<span className='text-xs text-green-600'>Online</span>
+						<div className='flex items-center gap-2'>
+							<span className='text-xs text-green-600 select-none'>Online</span>
+							<span className='text-xs text-gray-400 select-none'>
+								• Typically responds instantly
+							</span>
+						</div>
+
+						{/* Hover message */}
+						<span className='absolute left-1/2 -translate-x-1/2 -bottom-8 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap'>
+							Click to chat with me
+						</span>
 					</div>
-				</motion.button>
-			</div>
+				</motion.div>
+			</motion.div>
 
 			<AlertDialog
 				open={isDialogOpen}
