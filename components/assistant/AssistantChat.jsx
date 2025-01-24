@@ -32,7 +32,7 @@ const ChatMessage = ({ message, isLast }) => {
 			<div
 				className={`relative max-w-[80%] p-3 rounded-lg ${
 					isUser
-						? 'bg-primary text-white ml-4'
+						? 'bg-blue-500/50 text-black ml-4'
 						: 'bg-base-200 text-base-content mr-4'
 				}`}>
 				{/* Message content with Markdown support */}
