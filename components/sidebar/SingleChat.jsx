@@ -49,15 +49,13 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<div className='relative flex-shrink-0 group-hover:scale-105 transition-transform duration-300'>
-								<div className='w-10 h-10 rounded-full overflow-hidden ring-2 ring-base-300/50 group-hover:ring-primary/20'>
-									<Image
-										src={avatarUrl}
-										alt={persona?.name || 'Model Avatar'}
-										width={40}
-										height={40}
-										className='object-cover'
-									/>
-								</div>
+								<Image
+									src={avatarUrl}
+									alt={persona?.name || 'Model Avatar'}
+									width={40}
+									height={40}
+									className='w-10 h-10 rounded-full ring-2 ring-base-300/50 group-hover:ring-primary/20'
+								/>
 								{/* Online indicator */}
 								<div className='absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full ring-2 ring-base-100' />
 							</div>
