@@ -55,9 +55,8 @@ export const AssistantProvider = ({ children }) => {
             const welcomeMessage = {
                 id: nanoid(),
                 role: 'assistant',
-                content: user ?
-                    "Hello! I'm your personal BabaGPT assistant. How can I help you today?" :
-                    "Hi! I'm BabaGPT assistant. I can help you learn about our platform and features. Feel free to ask any questions!",
+                content:
+                    "Hello! I'm your personal Baba AI assistant. How can I help you today?",
                 timestamp: new Date().toISOString()
             };
 
