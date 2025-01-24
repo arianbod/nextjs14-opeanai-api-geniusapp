@@ -165,17 +165,17 @@ const AssistantButton = () => {
 					onClick={toggleAssistant}>
 					{/* Avatar container with online indicator */}
 					<div className='relative'>
-						<div className='select-none w-12 h-12 rounded-full overflow-hidden border-2 border-primary relative'>
+						{/* <div className='select-none w-12 h-12 rounded-full overflow-hidden border-2 border-primary relative'>
 							<div className='absolute inset-0 bg-green-800' />
-							<Image
-								alt='Assistant Avatar'
-								src='/images/babagpt_bw.svg'
-								width={48}
-								height={48}
-								className='select-none relative z-10 object-contain'
-								priority
-							/>
-						</div>
+						</div> */}
+						<Image
+							alt='Assistant Avatar'
+							src='/images/babagpt_bw.svg'
+							width={48}
+							height={48}
+							className='select-none relative z-10 object-contain w-8 h-8 bg-slate-700 rounded-full p-1'
+							priority
+						/>
 						{/* Animated online indicator */}
 						<motion.div
 							className='select-none absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white'
