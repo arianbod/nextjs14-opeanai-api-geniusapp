@@ -20,7 +20,7 @@ export const AssistantProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(false);
     // Added: Separate loading state for message sending
     const [isSending, setIsSending] = useState(false);
-
+    const [notFirstTimeAssistant, setNotFirstTimeAssistant] = useState(false)
     // Chat States
     const [assistantChatId, setAssistantChatId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -207,11 +207,12 @@ export const AssistantProvider = ({ children }) => {
 
     // Auto-open assistant for non-authenticated users
     useEffect(() => {
-        const shouldOpenAssistant = !user && !isOpen;
+        const shouldOpenAssistant = !notFirstTimeAssistant && !user && !isOpen;
         if (shouldOpenAssistant) {
             toggleAssistant();
+            setNotFirstTimeAssistant(true)
         }
-    }, [user, isOpen, toggleAssistant]);
+    }, [user, isOpen, notFirstTimeAssistant, toggleAssistant]);
     // Reset assistant state
     const resetAssistant = useCallback(() => {
         setMessages([]);
