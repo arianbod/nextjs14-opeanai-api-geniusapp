@@ -204,6 +204,14 @@ export const AssistantProvider = ({ children }) => {
         }
     }, [assistantChatId, supportModel]);
 
+
+    // Auto-open assistant for non-authenticated users
+    useEffect(() => {
+        const shouldOpenAssistant = !user && !isOpen;
+        if (shouldOpenAssistant) {
+            toggleAssistant();
+        }
+    }, [user, isOpen, toggleAssistant]);
     // Reset assistant state
     const resetAssistant = useCallback(() => {
         setMessages([]);
