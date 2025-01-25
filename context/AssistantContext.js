@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { nanoid } from 'nanoid';
 import { AIPersonas } from '@/lib/Personas';
