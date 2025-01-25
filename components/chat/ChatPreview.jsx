@@ -117,7 +117,7 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 
 				{/* Stats Section */}
 				<div className='px-4 py-3 bg-base-200/50 border-y border-base-200'>
-					<div className='flex items-center justify-between text-sm text-base-content/70 whitespace-nowrap overflow-x-auto'>
+					<div className='flex items-center justify-between text-sm text-base-content/70 whitespace-nowrap'>
 						<div className='flex items-center gap-1.5 min-w-fit'>
 							<div className='relative'>
 								<MessageSquare className='w-4 h-4 shrink-0' />
