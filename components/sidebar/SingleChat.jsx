@@ -70,7 +70,7 @@ const SingleChat = ({ persona, avatarUrl, chatTitle, chatId, onSelect }) => {
 				<div className='flex-1 min-w-0 ml-3'>
 					<h3 className='font-medium text-sm truncate'>{chatTitle}</h3>
 					<p className='text-xs text-base-content/60 truncate'>
-						{persona?.role || 'Assistant'}
+						{persona?.name || 'Assistant'}
 					</p>
 				</div>
 			</LocaleLink>
