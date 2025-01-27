@@ -1,3 +1,4 @@
+// app/api/chat/route.js
 import { NextResponse } from 'next/server';
 import { addMessageToChat, getChatMessages } from '@/server/chat';
 import { getChatProvider } from '@/lib/ai-providers/server';
@@ -18,26 +19,10 @@ const createSSEMessage = (data) => encoder.encode(`data: ${JSON.stringify(data)}
 // Constants
 const BATCH_SIZE = 5;
 const ALLOWED_FILE_TYPES = [
-    // Documents
-    'text/plain',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/csv',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    // Images
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'image/svg+xml',
-    // Web files
-    'text/html',
-    'text/css',
-    'application/javascript',
-    'application/json',
-    'text/markdown'
+    'text/plain', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'text/html', 'text/css', 'application/javascript', 'application/json', 'text/markdown'
 ];
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -45,7 +30,6 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'imag
 
 async function processStream(controller, aiStream, provider, providerInstance, contentChunks = []) {
     let accumulatedContent = '';
-
     try {
         for await (const chunk of aiStream) {
             const contentChunk = providerInstance.extractContentFromChunk(chunk);
@@ -54,22 +38,26 @@ async function processStream(controller, aiStream, provider, providerInstance, c
                 contentChunks.push(contentChunk);
 
                 if (contentChunks.length >= BATCH_SIZE) {
-                    controller.enqueue(createSSEMessage({
-                        type: 'chunk',
-                        content: contentChunks.join(''),
-                        provider: provider
-                    }));
+                    controller.enqueue(
+                        createSSEMessage({
+                            type: 'chunk',
+                            content: contentChunks.join(''),
+                            provider
+                        })
+                    );
                     contentChunks.length = 0;
                 }
             }
         }
 
         if (contentChunks.length > 0) {
-            controller.enqueue(createSSEMessage({
-                type: 'chunk',
-                content: contentChunks.join(''),
-                provider: provider
-            }));
+            controller.enqueue(
+                createSSEMessage({
+                    type: 'chunk',
+                    content: contentChunks.join(''),
+                    provider
+                })
+            );
         }
 
         return accumulatedContent;
@@ -104,7 +92,6 @@ export async function POST(request) {
                     { status: 400 }
                 );
             }
-
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
                 return NextResponse.json(
                     { error: 'Unsupported file type' },
@@ -118,15 +105,16 @@ export async function POST(request) {
         const stream = new ReadableStream({
             async start(controller) {
                 try {
-                    const [userMessage, previousMessages] = await Promise.all([
-                        addMessageToChat(
-                            userId,
-                            chatId,
-                            content?.trim() || `Uploaded a ${IMAGE_TYPES.includes(file?.type) ? 'image' : 'file'}`,
-                            'user'
-                        ),
-                        getChatMessages(userId, chatId)
-                    ]);
+                    // ---------------------------
+                    // CHANGED: do calls in series
+                    // ---------------------------
+                    const userMessage = await addMessageToChat(
+                        userId,
+                        chatId,
+                        content?.trim() || `Uploaded a ${IMAGE_TYPES.includes(file?.type) ? 'image' : 'file'}`,
+                        'user'
+                    );
+                    const previousMessages = await getChatMessages(userId, chatId);
 
                     controller.enqueue(createSSEMessage({
                         type: 'status',
@@ -134,9 +122,8 @@ export async function POST(request) {
                         messageId: userMessage.id
                     }));
 
-                    // In your chat route, before formatMessages call
                     console.log("File Info:", {
-                        file: file,
+                        file,
                         fileContent: file?.content,
                         fileType: file?.type,
                     });
@@ -144,10 +131,10 @@ export async function POST(request) {
                     const formattedMessages = providerInstance.formatMessages({
                         persona,
                         previousMessages,
-                        fileContent: file?.content, fileName: file?.name,
+                        fileContent: file?.content,
+                        fileName: file?.name,
                         fileType: file?.type
                     });
-
 
                     const aiStream = await providerInstance.generateChatStream(
                         formattedMessages,
@@ -163,15 +150,12 @@ export async function POST(request) {
                         contentChunks
                     );
 
+                    // Save the assistant message
                     const assistantMessage = await addMessageToChat(
                         userId,
                         chatId,
                         accumulatedContent,
-                        'assistant',
-                        {
-                            provider: persona.provider,
-                            model: persona.modelCodeName
-                        }
+                        'assistant'
                     );
 
                     controller.enqueue(createSSEMessage({
@@ -184,7 +168,6 @@ export async function POST(request) {
                     console.error('Streaming error:', error);
                     const { errorMessage } = await handleProviderError(error, persona.provider);
 
-                    // Send detailed error information
                     controller.enqueue(createSSEMessage({
                         type: 'error',
                         content: errorMessage || 'An error occurred during streaming',

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -17,85 +17,111 @@ export const AssistantProvider = ({ children }) => {
     // UI States
     const [isOpen, setIsOpen] = useState(false);
     const [isMinimized, setIsMinimized] = useState(false);
+    // "IsLoading" used to display spinner or "Assistant typing"
     const [isLoading, setIsLoading] = useState(false);
-    // Added: Separate loading state for message sending
+    // Tracks if we are currently sending a message
     const [isSending, setIsSending] = useState(false);
-    const [notFirstTimeAssistant, setNotFirstTimeAssistant] = useState(false)
-    // Chat States
+
     const [assistantChatId, setAssistantChatId] = useState(null);
     const [messages, setMessages] = useState([]);
 
-    // Support model configuration
-    const supportModel = AIPersonas.find(p => p.key === 'claude-3-5-sonnet-latest-helper');
+    // Suppose we had a "welcome" message or a "notFirstTimeAssistant" flag
+    // We'll remove or simplify that so we do NOT create a chat prematurely.
+    // const [notFirstTimeAssistant, setNotFirstTimeAssistant] = useState(false);
 
-    // Toggle assistant visibility
+    // Model configuration
+    const supportModel = AIPersonas.find(
+        (p) => p.key === 'claude-3-5-sonnet-latest-helper'
+    );
+
+    // Toggle assistant visibility, but DO NOT automatically create chat
     const toggleAssistant = useCallback(() => {
-        setIsOpen(prev => !prev);
+        setIsOpen((prev) => !prev);
         setIsMinimized(false);
-        initializeChat()
+        // DO NOT call initializeChat here
     }, []);
 
     // Minimize/maximize assistant panel
     const toggleMinimize = useCallback(() => {
-        setIsMinimized(prev => !prev);
+        setIsMinimized((prev) => !prev);
     }, []);
 
-    // Initialize chat session
-    const initializeChat = useCallback(async () => {
-        serverLogger("initialize", assistantChatId)
-        // Only initialize if not already initialized
-        if (assistantChatId || isLoading) return;
+    // We no longer auto-create the chat on opening. If you had
+    // a useEffect that tried to open the assistant for non-auth users,
+    // remove it or simply do not call initializeChat in it.
 
+    // ————————————————————————————————————————————
+    // If you still want a helper to create a chat manually, keep something like:
+    // ————————————————————————————————————————————
+    const createNewChat = useCallback(async () => {
         try {
             setIsLoading(true);
-            const tempChatId = nanoid();
-            setAssistantChatId(tempChatId);
-
-            // Create initial message
-            const welcomeMessage = {
-                id: nanoid(),
-                role: 'assistant',
-                content:
-                    "Welcome! I'm your personal Baba AI assistant. I can help you to start an easier journey with BabaGPT,  How can I help you today?",
-                timestamp: new Date().toISOString()
+            // You can pass an empty string or some minimal text as "initialMessage"
+            const body = {
+                userId: WEBSITE_USER,
+                initialMessage: 'Conversation started', // or just empty
+                model: {
+                    name: supportModel.name,
+                    provider: supportModel.provider,
+                    modelCodeName: supportModel.modelCodeName,
+                    role: supportModel.role,
+                },
             };
 
-            try {
-                const response = await fetch('/api/chat/createChat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: WEBSITE_USER,
-                        initialMessage: welcomeMessage.content,
-                        model: {
-                            name: supportModel.name,
-                            provider: supportModel.provider,
-                            modelCodeName: supportModel.modelCodeName,
-                            role: supportModel.role
-                        }
-                    })
-                });
+            const response = await fetch('/api/chat/createChat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
 
-                if (!response.ok) {
-                    throw new Error('Failed to create chat');
-                }
-
-                setMessages([welcomeMessage]);
-            } catch (error) {
-                console.error('Error creating chat:', error);
-                toast.error('Failed to initialize chat. Please try again.');
-                setAssistantChatId(null);
+            if (!response.ok) {
+                throw new Error('Failed to create chat');
             }
+
+            const result = await response.json();
+            if (!result.success || !result.data?.id) {
+                throw new Error('No valid chat ID returned');
+            }
+
+            setAssistantChatId(result.data.id);
+            return result.data.id;
         } catch (error) {
-            console.error('Error initializing assistant chat:', error);
-            toast.error('Failed to initialize chat assistant');
-            setAssistantChatId(null);
+            console.error('Error creating chat:', error);
+            toast.error('Failed to create chat. Please try again.');
+            return null;
         } finally {
             setIsLoading(false);
         }
-    }, [user, supportModel]);
+    }, [supportModel]);
 
+    // ————————————————————————————————————————————
+    // A small helper to do up to 3 fetch attempts
+    // ————————————————————————————————————————————
+    async function tryFetchChatAPI(payload, attempt = 1) {
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to get response');
+            }
+            return response;
+        } catch (error) {
+            if (attempt < 3) {
+                // exponential backoff or small delay
+                await new Promise((r) => setTimeout(r, 500 * attempt));
+                return tryFetchChatAPI(payload, attempt + 1);
+            } else {
+                throw error;
+            }
+        }
+    }
+
+    // ————————————————————————————————————————————
     // Handle streaming response
+    // ————————————————————————————————————————————
     const handleStreamResponse = async (response) => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -113,24 +139,21 @@ export const AssistantProvider = ({ children }) => {
                     if (line.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(line.slice(6));
-                            if (data.content && typeof data.content === 'string' &&
+                            if (
+                                data.content &&
+                                typeof data.content === 'string' &&
                                 !data.content.includes('streaming_started') &&
                                 !data.content.includes('streaming_completed') &&
-                                !data.content.includes('stream_ended')) {
+                                !data.content.includes('stream_ended')
+                            ) {
                                 accumulatedContent += data.content;
-                                // Update the last message with accumulated content
-                                setMessages(prev => {
+                                // Update the last assistant message with the new chunk
+                                setMessages((prev) => {
                                     const newMessages = [...prev];
                                     const lastMessage = newMessages[newMessages.length - 1];
-                                    if (lastMessage.role === 'assistant') {
+
+                                    if (lastMessage && lastMessage.role === 'assistant') {
                                         lastMessage.content = accumulatedContent;
-                                    } else {
-                                        newMessages.push({
-                                            id: nanoid(),
-                                            role: 'assistant',
-                                            content: accumulatedContent,
-                                            timestamp: new Date().toISOString()
-                                        });
                                     }
                                     return newMessages;
                                 });
@@ -147,73 +170,83 @@ export const AssistantProvider = ({ children }) => {
         }
     };
 
-    // Send message to assistant
-    const sendMessage = useCallback(async (content) => {
-        if (!content?.trim() || !assistantChatId || isSending) return;
+    // ————————————————————————————————————————————
+    // Send message
+    // ————————————————————————————————————————————
+    const sendMessage = useCallback(
+        async (content) => {
+            if (!content?.trim() || isSending) return;
 
-        try {
-            setIsSending(true);
-            // Add user message immediately
-            const userMessage = {
-                id: nanoid(),
-                role: 'user',
-                content: content.trim(),
-                timestamp: new Date().toISOString()
-            };
-            setMessages(prev => [...prev, userMessage]);
+            try {
+                setIsSending(true);
 
-            // Add initial assistant message for streaming
-            setMessages(prev => [...prev, {
-                id: nanoid(),
-                role: 'assistant',
-                content: '',
-                timestamp: new Date().toISOString()
-            }]);
+                // 1) Create a chat if we don't have one yet
+                let tempChatId = assistantChatId;
+                if (!tempChatId) {
+                    tempChatId = await createNewChat();
+                    if (!tempChatId) {
+                        // If createNewChat fails, we cannot proceed
+                        return;
+                    }
+                    setAssistantChatId(tempChatId);
+                }
 
-            // Send message to backend
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+                // 2) Immediately add the user message to local state
+                const userMessage = {
+                    id: nanoid(),
+                    role: 'user',
+                    content: content.trim(),
+                    timestamp: new Date().toISOString(),
+                };
+                setMessages((prev) => [...prev, userMessage]);
+
+                // 3) Optionally add a placeholder assistant message for streaming
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: nanoid(),
+                        role: 'assistant',
+                        content: '',
+                        timestamp: new Date().toISOString(),
+                    },
+                ]);
+
+                // 4) Actually call our /api/chat route with streaming
+                const payload = {
                     userId: WEBSITE_USER,
-                    chatId: assistantChatId,
+                    chatId: tempChatId,
                     content: content.trim(),
                     persona: supportModel,
-                })
-            });
+                };
 
-            if (!response.ok) {
-                throw new Error('Failed to get response');
+                const response = await tryFetchChatAPI(payload);
+                // 5) Stream the response chunks
+                await handleStreamResponse(response);
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                // Replace the placeholder assistant message with an error text
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        id: nanoid(),
+                        role: 'assistant',
+                        content:
+                            'I apologize, but I encountered an error. Please try again or refresh the page if the issue persists.',
+                        timestamp: new Date().toISOString(),
+                    },
+                ]);
+                toast.error('Failed to process message');
+            } finally {
+                setIsSending(false);
             }
+        },
+        [assistantChatId, isSending, createNewChat, supportModel]
+    );
 
-            // Handle streaming response
-            await handleStreamResponse(response);
-
-        } catch (error) {
-            console.error('Error sending message:', error);
-            // Add error message
-            setMessages(prev => [...prev, {
-                id: nanoid(),
-                role: 'assistant',
-                content: "I apologize, but I encountered an error. Please try again or refresh the page if the issue persists.",
-                timestamp: new Date().toISOString()
-            }]);
-            toast.error('Failed to process message');
-        } finally {
-            setIsSending(false);
-        }
-    }, [assistantChatId, supportModel]);
-
-
-    // Auto-open assistant for non-authenticated users
-    useEffect(() => {
-        const shouldOpenAssistant = !notFirstTimeAssistant && !user && !isOpen;
-        if (shouldOpenAssistant) {
-            toggleAssistant();
-            setNotFirstTimeAssistant(true)
-        }
-    }, [user, isOpen, notFirstTimeAssistant, toggleAssistant]);
-    // Reset assistant state
+    // ————————————————————————————————————————————
+    // Reset assistant
+    // ————————————————————————————————————————————
     const resetAssistant = useCallback(() => {
         setMessages([]);
         setAssistantChatId(null);
@@ -226,14 +259,15 @@ export const AssistantProvider = ({ children }) => {
     const value = {
         isOpen,
         isMinimized,
-        isLoading: isLoading || isSending, // Combine loading states for external consumers
+        // Combine loading states if you want: isLoading or isSending
+        isLoading: isLoading || isSending,
         messages,
         toggleAssistant,
         toggleMinimize,
-        initializeChat,
         sendMessage,
         resetAssistant,
-        isLoggedIn: !!user
+        // some UI can detect if user is logged in
+        isLoggedIn: !!user,
     };
 
     return (
