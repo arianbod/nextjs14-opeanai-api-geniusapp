@@ -86,6 +86,8 @@ export async function createChat(userId, initialMessage, model) {
         console.error('User not found:', userId);
         throw new Error('User not authenticated');
     }
+// ###Action: we must add a checker for the user token balance here.
+// if(user.balance < ...)
 
     try {
         const title = await generateChatTitle(initialMessage);
