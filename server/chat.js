@@ -86,8 +86,8 @@ export async function createChat(userId, initialMessage, model) {
         console.error('User not found:', userId);
         throw new Error('User not authenticated');
     }
-// ###Action: we must add a checker for the user token balance here.
-// if(user.balance < ...)
+    // ###Action: we must add a checker for the user token balance here.
+    // if(user.balance < ...)
 
     try {
         const title = await generateChatTitle(initialMessage);
@@ -103,9 +103,6 @@ export async function createChat(userId, initialMessage, model) {
                 role: model.role,
             },
         });
-
-        // Remove this line to prevent duplicate message
-        // const message = await addMessageToChat(userId, chat.id, initialMessage, 'user');
 
         revalidatePath('/chat');
 
@@ -416,4 +413,81 @@ export async function getChatMessagesPreview(userId, chatId) {
         console.error('Error getting chat messages preview:', error);
         throw error;
     }
+}
+
+export async function updateMessageMetadata(userId, messageId, data) {
+    // data can be { pinned?: boolean, starred?: boolean, notes?: string }
+    // Verify ownership via the Chat->Message chain
+    const user = await getUserById(userId);
+    if (!user) throw new Error('User not authenticated');
+
+    // Make sure the user actually owns the chat that has this message
+    const message = await prisma.message.findFirst({
+        where: {
+            id: messageId,
+            chat: {
+                userId: userId
+            }
+        }
+    });
+    if (!message) {
+        throw new Error('Message not found or unauthorized');
+    }
+
+    const updated = await prisma.message.update({
+        where: { id: messageId },
+        data: {
+            pinned: data.pinned ?? message.pinned,
+            pinnedAt: data.pinned ? new Date() : null,
+            starred: data.starred ?? message.starred,
+            notes: data.notes !== undefined ? data.notes : message.notes
+        }
+    });
+
+    return updated;
+}
+
+export async function updateChatPinned(userId, chatId, pinned) {
+    const user = await getUserById(userId);
+    if (!user) throw new Error('User not authenticated');
+
+    const chat = await prisma.chat.findFirst({
+        where: {
+            id: chatId,
+            userId
+        }
+    });
+    if (!chat) {
+        throw new Error('Chat not found or unauthorized');
+    }
+
+    const updated = await prisma.chat.update({
+        where: { id: chatId },
+        data: {
+            pinned,
+            pinnedAt: pinned ? new Date() : null
+        }
+    });
+    return updated;
+}
+
+export async function updateChatNotes(userId, chatId, notes) {
+    const user = await getUserById(userId);
+    if (!user) throw new Error('User not authenticated');
+
+    const chat = await prisma.chat.findFirst({
+        where: {
+            id: chatId,
+            userId
+        }
+    });
+    if (!chat) {
+        throw new Error('Chat not found or unauthorized');
+    }
+
+    const updated = await prisma.chat.update({
+        where: { id: chatId },
+        data: { notes }
+    });
+    return updated;
 }
