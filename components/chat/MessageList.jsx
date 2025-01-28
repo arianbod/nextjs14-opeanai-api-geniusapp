@@ -1,8 +1,7 @@
 import React, { memo, useEffect, useRef, useCallback, useState } from 'react';
 import { throttle } from 'lodash';
-import { ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
-import { useSearchParams } from 'next/navigation'; // Updated for Next.js 15
-
+import { ArrowUp, ArrowDown, MessageSquare, Check } from 'lucide-react';
+import { useSearchParams } from 'next/navigation'; // For Next.js 15
 import Message from './Message';
 
 const MessageList = ({ messages, isLoading, messagesEndRef }) => {
@@ -12,16 +11,13 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 	const lastProcessedMessageCount = useRef(0);
 	const lastScrollPositionRef = useRef(0);
 
-	// Updated routing for Next.js 15
-	// Using searchParams hook instead of router.query
 	const searchParams = useSearchParams();
 	const targetMessageId = searchParams.get('targetMessageId');
 
-	// Scroll configuration constants
-	const LINE_HEIGHT = 24; // Standard line height for message content
-	const SCROLL_THRESHOLD = 150; // Pixels from bottom to trigger auto-scroll behavior
+	// SCROLL CONFIG
+	const LINE_HEIGHT = 24;
+	const SCROLL_THRESHOLD = 150;
 
-	// Determines if the user has scrolled up significantly from the bottom
 	const isScrolledUp = useCallback(() => {
 		if (!scrollContainerRef.current) return false;
 		const { scrollTop, scrollHeight, clientHeight } =
@@ -29,7 +25,6 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		return scrollHeight - (scrollTop + clientHeight) > SCROLL_THRESHOLD;
 	}, []);
 
-	// Handles smooth content scrolling animation
 	const performContentScroll = useCallback(() => {
 		if (!scrollContainerRef.current || !isAutoScrollEnabled || isScrolledUp())
 			return;
@@ -42,13 +37,10 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		const lastMessageRect = lastMessage.getBoundingClientRect();
 		const containerRect = container.getBoundingClientRect();
 
-		// Calculate visible portion of the last message
 		const messageVisibleHeight = Math.min(
 			lastMessageRect.bottom - containerRect.top,
 			lastMessageRect.height
 		);
-
-		// Scroll if message is partially visible
 		if (messageVisibleHeight < lastMessageRect.height) {
 			const currentScroll = container.scrollTop;
 			container.scrollTop = currentScroll + LINE_HEIGHT;
@@ -56,7 +48,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		}
 	}, [isAutoScrollEnabled, isScrolledUp]);
 
-	// Handle new message arrivals
+	// On new messages, attempt auto-scroll
 	useEffect(() => {
 		if (
 			messages.length > lastProcessedMessageCount.current &&
@@ -66,15 +58,14 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		}
 	}, [messages, performContentScroll, isAutoScrollEnabled]);
 
-	// Throttled scroll handler to manage scroll state and new content indicators
 	const handleScroll = useCallback(
 		throttle(() => {
-			const isUp = isScrolledUp();
-			if (isUp && isAutoScrollEnabled) {
+			const up = isScrolledUp();
+			if (up && isAutoScrollEnabled) {
 				setIsAutoScrollEnabled(false);
 			}
 			setHasNewContent(
-				isUp && messages.length > lastProcessedMessageCount.current
+				up && messages.length > lastProcessedMessageCount.current
 			);
 
 			if (scrollContainerRef.current) {
@@ -84,7 +75,6 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		[messages.length, isAutoScrollEnabled, isScrolledUp]
 	);
 
-	// Set up scroll event listener
 	useEffect(() => {
 		const container = scrollContainerRef.current;
 		if (container) {
@@ -93,7 +83,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		}
 	}, [handleScroll]);
 
-	// Handle new message tracking and auto-scroll behavior
+	// When messages complete loading
 	useEffect(() => {
 		const container = scrollContainerRef.current;
 		if (!container) return;
@@ -105,8 +95,6 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 				performContentScroll();
 			}
 		}
-
-		// Reset state when message stream completes
 		if (!isLoading) {
 			lastProcessedMessageCount.current = messages.length;
 			setHasNewContent(false);
@@ -119,12 +107,11 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		performContentScroll,
 	]);
 
-	// Handle scrolling to targeted message
+	// Scroll to "targetMessageId" if provided in URL
 	useEffect(() => {
 		if (!targetMessageId) return;
 		if (!scrollContainerRef.current) return;
 
-		// Delayed scroll to ensure DOM is ready
 		const scrollToTarget = () => {
 			const targetElement = document.getElementById(
 				`message-${targetMessageId}`
@@ -133,16 +120,13 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 				targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			}
 		};
-
-		// Add small delay to ensure render completion
 		setTimeout(scrollToTarget, 100);
 	}, [targetMessageId, messages]);
 
-	// Toggle auto-scroll functionality
+	// Toggle auto-scroll
 	const toggleAutoScroll = useCallback(() => {
 		setIsAutoScrollEnabled((prev) => {
 			if (!prev) {
-				// Immediately scroll to bottom when enabling
 				const container = scrollContainerRef.current;
 				if (container) {
 					container.scrollTop = container.scrollHeight - container.clientHeight;
@@ -154,10 +138,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		});
 	}, [messages.length]);
 
-	/**
-	 * Helper to format date as "Month Day, Year".
-	 * Adjust to your preference or localization.
-	 */
+	// Optional date-grouping helpers
 	const formatDateDivider = (dateString) => {
 		const date = new Date(dateString);
 		return date.toLocaleDateString(undefined, {
@@ -167,9 +148,6 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		});
 	};
 
-	/**
-	 * Helper to see if two timestamps are on the same day
-	 */
 	const isSameDay = (ts1, ts2) => {
 		const d1 = new Date(ts1);
 		const d2 = new Date(ts2);
@@ -189,7 +167,10 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 					{messages.map((message, index) => {
 						const showDateDivider =
 							index === 0 ||
-							!isSameDay(message.timestamp, messages[index - 1].timestamp);
+							!isSameDay(
+								messages[index].timestamp,
+								messages[index - 1]?.timestamp
+							);
 						const isTargeted = message.id === targetMessageId;
 
 						return (
@@ -212,17 +193,58 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 										role={message.role}
 										content={message.content}
 										timestamp={message.timestamp}
-										highlight={isTargeted && true}
+										pinned={message.pinned}
+										starred={message.starred}
+										notes={message.notes}
+										highlight={isTargeted}
 									/>
 								</div>
 							</div>
 						);
 					})}
+					{messages.length > 0 && (
+						<div className='flex flex-col items-center py-6 opacity-0 animate-fade-in'>
+							<div
+								className={`
+                  flex items-center justify-center 
+                  w-6 h-6 rounded-full 
+                  ${isLoading ? 'bg-primary/10' : 'bg-base-200/50'}
+                  transition-all duration-500
+                  ${isLoading ? 'animate-pulse' : ''}
+                `}>
+								<div
+									className={`
+                    ${isLoading ? 'animate-spin' : ''}
+                    transition-transform duration-500
+                    ${isLoading ? 'scale-75' : 'scale-100'}
+                  `}>
+									{isLoading ? (
+										<div className='w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full' />
+									) : (
+										<Check className='w-3 h-3 text-primary' />
+									)}
+								</div>
+							</div>
+							<div className='flex items-center gap-2 mt-2'>
+								<div
+									className={`
+                    h-px w-12 
+                    transition-all duration-500
+                    ${
+											isLoading
+												? 'bg-gradient-to-r from-transparent via-primary/20 to-transparent animate-pulse'
+												: 'bg-gradient-to-r from-transparent via-base-300/30 to-transparent'
+										}
+                  `}
+								/>
+							</div>
+						</div>
+					)}
 					<div ref={messagesEndRef} />
 				</div>
 			</div>
 
-			{/* Auto-scroll toggle button */}
+			{/* Auto-scroll toggle */}
 			{(hasNewContent || !isAutoScrollEnabled) && (
 				<button
 					onClick={toggleAutoScroll}

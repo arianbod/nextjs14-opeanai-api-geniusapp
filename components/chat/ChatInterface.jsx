@@ -12,6 +12,8 @@ import { usePreferences } from '@/context/preferencesContext';
 import ImageGenerationDisplay from './ImageGeneartionDisplay';
 import { nanoid } from 'nanoid';
 
+import PinnedPreviewItem from './PinnedPreviewItem'; // <-- new import
+
 const IMAGE_TYPES = [
 	'image/jpeg',
 	'image/png',
@@ -22,31 +24,37 @@ const IMAGE_TYPES = [
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
 const ChatInterface = () => {
+	// ---- HOOKS & CONTEXT ----
 	const {
 		messages,
-		setMessages,
+		setMessages, // (If used elsewhere in your code)
 		isGenerating,
 		user,
 		activeChat,
 		model,
-		processUserMessage,
+		processUserMessage, // function from ChatContext that handles final message sending
 		imageGeneration,
 		forceImageGeneration,
 	} = useChat();
 
-	const [inputText, setInputText] = useState('');
-	const [uploadedFile, setUploadedFile] = useState(null);
-	const messagesEndRef = useRef(null);
-	const [greetingIndex, setGreetingIndex] = useState(0);
-	const [showGreeting, setShowGreeting] = useState(true);
-	const [selectedSuggestion, setSelectedSuggestion] = useState(null);
-	const [isUploading, setIsUploading] = useState(false);
-	const [uploadProgress, setUploadProgress] = useState(0);
-	const abortControllerRef = useRef(null);
 	const { dict, t, isRTL } = useTranslations();
 	const { showSidebar, isMobile } = usePreferences();
 
-	// Greeting logic
+	// ---- LOCAL STATE ----
+	const [inputText, setInputText] = useState('');
+	const [uploadedFile, setUploadedFile] = useState(null);
+	const [isUploading, setIsUploading] = useState(false);
+	const [uploadProgress, setUploadProgress] = useState(0);
+
+	const messagesEndRef = useRef(null);
+	const abortControllerRef = useRef(null);
+
+	// Greeting logic states
+	const [greetingIndex, setGreetingIndex] = useState(0);
+	const [showGreeting, setShowGreeting] = useState(true);
+	const [selectedSuggestion, setSelectedSuggestion] = useState(null);
+
+	// ---- GREETING / SUGGESTION LOGIC ----
 	const standardGreetings = [
 		{
 			title: t('chatInterface.greetings.askAnythingTitle'),
@@ -101,19 +109,27 @@ const ChatInterface = () => {
 			? perplexityQuestions
 			: standardGreetings;
 
+	// Interval to change greeting
 	useEffect(() => {
 		const interval = setInterval(() => {
 			if (!selectedSuggestion) {
 				setShowGreeting(false);
 				setTimeout(() => {
-					setGreetingIndex((prevIndex) => (prevIndex + 1) % greetings.length);
+					setGreetingIndex((prev) => (prev + 1) % greetings.length);
 					setShowGreeting(true);
 				}, 300);
 			}
 		}, 5000);
+
 		return () => clearInterval(interval);
 	}, [greetings.length, selectedSuggestion]);
 
+	// ---- PINNED MESSAGES PREVIEW ----
+	// We keep pinned messages in normal chronological order in `MessageList`,
+	// but also show a pinned "preview bar" if any pinned messages exist:
+	const pinnedMessages = messages.filter((m) => m.pinned);
+
+	// ---- SCROLLING ----
 	const scrollToBottom = () => {
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
@@ -126,11 +142,13 @@ const ChatInterface = () => {
 		}
 	}, [messages]);
 
+	// ---- SUGGESTION HANDLER ----
 	const handleQuestionClick = (question) => {
 		setInputText(question);
 		setSelectedSuggestion(question);
 	};
 
+	// ---- RENDERING GREETINGS ----
 	const renderPostSelectionHint = (chosenText) => (
 		<div className='flex flex-col space-y-6 w-full max-w-xl mx-auto px-4 pt-64 text-center'>
 			<div className='p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg'>
@@ -231,13 +249,14 @@ const ChatInterface = () => {
 		);
 	};
 
+	// ---- FILE UPLOAD LOGIC ----
 	const handleFileUpload = async (file) => {
 		if (!file) {
 			setUploadedFile(null);
 			return;
 		}
 		if (file.size > MAX_FILE_SIZE) {
-			toast.error(t('chatInterface.errors.fileSizeExceeded'));
+			toast.error(t('chatInterface.errors.fileSizeExceeded') || 'File too big');
 			return;
 		}
 		try {
@@ -255,13 +274,19 @@ const ChatInterface = () => {
 			const fileContent = await new Promise((resolve, reject) => {
 				reader.onloadend = () => resolve(reader.result);
 				reader.onerror = () =>
-					reject(new Error(t('chatInterface.errors.failedToReadFile')));
+					reject(
+						new Error(
+							t('chatInterface.errors.failedToReadFile') ||
+								'Failed to read file'
+						)
+					);
 				if (file.type.startsWith('text/')) {
 					reader.readAsText(file);
 				} else {
 					reader.readAsDataURL(file);
 				}
 			});
+
 			setUploadedFile({
 				name: file.name,
 				type: file.type,
@@ -271,10 +296,15 @@ const ChatInterface = () => {
 			});
 			setIsUploading(false);
 			setUploadProgress(100);
-			toast.success(t('chatInterface.uploadSuccess', { fileName: file.name }));
+			toast.success(
+				t('chatInterface.uploadSuccess', { fileName: file.name }) ||
+					`Uploaded ${file.name}`
+			);
 		} catch (error) {
 			console.error('Error uploading file:', error);
-			toast.error(t('chatInterface.errors.fileProcessingError'));
+			toast.error(
+				t('chatInterface.errors.fileProcessingError') || 'File error'
+			);
 			setIsUploading(false);
 			setUploadProgress(0);
 			setUploadedFile(null);
@@ -286,7 +316,9 @@ const ChatInterface = () => {
 			setIsUploading(false);
 			setUploadProgress(0);
 			setUploadedFile(null);
-			toast.error(t('chatInterface.errors.uploadCanceled'));
+			toast.error(
+				t('chatInterface.errors.uploadCanceled') || 'Upload canceled'
+			);
 			abortControllerRef.current = null;
 		}
 	};
@@ -295,28 +327,62 @@ const ChatInterface = () => {
 		setUploadedFile(null);
 		setUploadProgress(0);
 		setIsUploading(false);
-		toast.success(t('chatInterface.errors.fileRemoved'));
+		toast.success(t('chatInterface.errors.fileRemoved') || 'File removed');
 	};
 
-	// Instead of showing the question after the user clicks Send,
-	// we just call "processUserMessage" on submit. If forceImageGeneration
-	// is on, it will do generateImage; otherwise, it does text-based response.
-	const handleSubmit = async (e) => {
+	// ---- SUBMIT ----
+	const handleSubmit = (e) => {
 		e.preventDefault();
 		processUserMessage(inputText, uploadedFile);
 
-		// Clear local states
+		// Clear states
 		setInputText('');
 		setUploadedFile(null);
 		setUploadProgress(0);
 		setSelectedSuggestion(null);
 	};
 
+	// ---- RENDER ----
 	return (
 		<div className='w-full max-w-3xl mx-auto rounded-xl no-scrollbar min-h-screen relative'>
 			<div className='absolute inset-0 bg-gradient-to-br from-gray-100 to-blue-50 dark:from-gray-900 dark:to-gray-800 -z-10'></div>
+
 			<div className='relative flex flex-col transition-colors duration-300 min-h-screen'>
+				{/* Header bar (unchanged) */}
 				<Header msgLen={messages.length} />
+
+				{/* STICKY PINNED PREVIEW BAR BELOW HEADER */}
+				{/** If we have pinned messages, show a small horizontal scroller of pinned chips */}
+				{pinnedMessages.length > 0 && (
+					<div
+						className='
+              sticky
+              top-[4rem]  /* Right below the header which is ~4rem high */
+              z-20
+              bg-base-200/90
+              border-b border-base-300
+              px-4 py-2
+              backdrop-blur-md
+              flex items-center gap-3
+            '>
+						<span className='text-sm font-semibold text-primary'>
+							{pinnedMessages.length === 1
+								? 'Pinned Message'
+								: 'Pinned Messages'}
+						</span>
+
+						<div className='flex gap-2 overflow-x-auto'>
+							{pinnedMessages.map((msg) => (
+								<PinnedPreviewItem
+									key={msg.id}
+									message={msg}
+								/>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* MAIN CONTENT: MESSAGES */}
 				{messages.length > 0 ? (
 					<div className='flex-grow animate-fade-in-down px-4 pb-20'>
 						<MessageList
@@ -340,6 +406,10 @@ const ChatInterface = () => {
 					</div>
 				) : (
 					<div className='h-[40vh] w-full flex items-center justify-center'>
+						{/* 
+              If there's no messages, show your greeting. 
+              This is the same logic you had in the 'else' block.
+            */}
 						<div
 							className={`transition-opacity duration-300 ${
 								showGreeting ? 'opacity-100' : 'opacity-0'
@@ -356,6 +426,8 @@ const ChatInterface = () => {
 						</div>
 					</div>
 				)}
+
+				{/* FIXED MESSAGE INPUT AT BOTTOM */}
 				<div
 					className={`fixed bottom-0 transition-all left-0 right-0 mx-auto ${
 						!isMobile && showSidebar
