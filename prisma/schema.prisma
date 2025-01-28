@@ -71,6 +71,9 @@ model Chat {
   appId         Int       @default(1)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages      Message[]
+  pinned      Boolean?    @default(false)
+ pinnedAt    DateTime?
+ notes       String?
 }
 
 model Message {
@@ -84,6 +87,10 @@ model Message {
   format       String?
   fileMetadata FileMetadata?
   chat         Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+   pinned     Boolean?   @default(false)
+pinnedAt   DateTime?
+ starred    Boolean?   @default(false)
+notes      String?
 }
 
 model FileMetadata {
