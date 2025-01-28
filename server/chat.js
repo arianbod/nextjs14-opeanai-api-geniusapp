@@ -104,7 +104,7 @@ export async function createChat(userId, initialMessage, model) {
             },
         });
 
-        revalidatePath('/chat');
+        // revalidatePath('/chat');
 
         return chat;
     } catch (error) {
@@ -210,7 +210,7 @@ export async function addMessageToChat(userId, chatId, content, role) {
         data: { updatedAt: new Date() },
     });
 
-    revalidatePath(`/chat/${chatIdString}`);
+    // revalidatePath(`/chat/${chatIdString}`);
     return message;
 }
 
@@ -229,7 +229,7 @@ export async function deleteChat(userId, chatId) {
     });
     console.log('Chat deleted');
 
-    revalidatePath('/chat');
+    // revalidatePath('/chat');
 }
 
 export async function manageUserTokens(userId, amount) {
