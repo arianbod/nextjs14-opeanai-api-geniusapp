@@ -26,7 +26,7 @@ const Message = ({
 	};
 
 	const formatTimestamp = (timestamp) => {
-		return new Date(timestamp).toLocaleString();
+		return new Date(timestamp).toLocaleTimeString();
 	};
 
 	// Add a "pulse" or "border" or "shadow" if highlight is true
