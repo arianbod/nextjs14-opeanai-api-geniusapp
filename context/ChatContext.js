@@ -393,22 +393,22 @@ export const ChatProvider = ({ children }) => {
             }
 
             // add user message to DB if existing chat
-            if (!newChat) {
-                const userMsgRes = await fetch('/api/chat/addMessage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: user.userId,
-                        chatId,
-                        content: content.trim(),
-                        role: 'user',
-                        messageId
-                    })
-                });
-                if (!userMsgRes.ok) {
-                    throw new Error('Failed to add user message');
-                }
-            }
+            // if (!newChat) {
+            //     const userMsgRes = await fetch('/api/chat/addMessage', {
+            //         method: 'POST',
+            //         headers: { 'Content-Type': 'application/json' },
+            //         body: JSON.stringify({
+            //             userId: user.userId,
+            //             chatId,
+            //             content: content.trim(),
+            //             role: 'user',
+            //             messageId
+            //         })
+            //     });
+            //     if (!userMsgRes.ok) {
+            //         throw new Error('Failed to add user message');
+            //     }
+            // }
 
             // add user message locally
             const userMessage = {
