@@ -19,17 +19,29 @@ import { PenBoxIcon, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import LocaleLink from '../hoc/LocalLink';
 import { usePreferences } from '@/context/preferencesContext';
+import toast from 'react-hot-toast';
 
+/**
+ * CHANGED: more flexible date category function.
+ * If the difference in days < 1 => Today,
+ * if < 2 => Yesterday, if < 7 => Last 7 days, etc.
+ */
 const getDateCategory = (timestamp) => {
 	const now = new Date();
 	const date = new Date(timestamp);
-	const diffTime = Math.abs(now - date);
-	const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+	const diffTime = now - date;
+	const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-	if (diffDays === 0) return 'Today';
-	if (diffDays === 1) return 'Yesterday';
-	if (diffDays <= 7) return 'Last 7 days';
-	if (diffDays <= 30) return 'Last 30 days';
+	if (diffDays < 0) {
+		// If local time is behind or something else, treat as 'Today'
+		return 'Today';
+	}
+	if (diffDays < 1) return 'Today';
+	if (diffDays < 2) return 'Yesterday';
+	if (diffDays < 7) return 'Last 7 days';
+	if (diffDays < 14) return 'Last 14 days';
+	if (diffDays < 17) return 'Last 17 days';
+	if (diffDays < 30) return 'Last 30 days';
 	return 'Older';
 };
 
@@ -52,6 +64,11 @@ const Sidebar = () => {
 	const previewRef = useRef(null);
 	const sidebarRef = useRef(null);
 
+	/**
+	 * CHANGED: We rely on chat.updatedAt or createdAt as the "timestamp".
+	 * If you prefer updatedAt as "last activity," be sure to pass that
+	 * to getDateCategory below.
+	 */
 	const groupChatsByDate = () => {
 		const groups = {
 			Today: [],
@@ -62,13 +79,20 @@ const Sidebar = () => {
 		};
 
 		chatList.forEach((chat) => {
-			const category = getDateCategory(chat.timestamp);
+			// Decide which date field you want to use for grouping:
+			const relevantDate = chat.updatedAt || chat.createdAt;
+			const category = getDateCategory(relevantDate);
+
+			// Make sure category is one of the keys above
+			if (!groups[category]) {
+				groups[category] = [];
+			}
 			groups[category].push(chat);
 		});
 
-		// Sort chats within each group by timestamp (newest first)
+		// Sort chats within each group by date descending
 		Object.keys(groups).forEach((key) => {
-			groups[key].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+			groups[key].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 		});
 
 		return groups;
@@ -146,13 +170,13 @@ const Sidebar = () => {
 			{/* Mobile Menu Button */}
 			<div
 				className={`
-                lg:hidden 
-                fixed 
-                top-3 
-                z-50 
-                ${sidebarPositionClass}
-                ${mobileSidebarOpen ? 'hidden' : ''}
-            `}>
+          lg:hidden 
+          fixed 
+          top-3 
+          z-50 
+          ${sidebarPositionClass}
+          ${mobileSidebarOpen ? 'hidden' : ''}
+        `}>
 				<button
 					onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
 					className='p-4 bg-base-200/80 backdrop-blur-sm rounded-full shadow-lg hover:bg-base-300/80 active:scale-95 transition-all'>
@@ -170,9 +194,11 @@ const Sidebar = () => {
 					className={`hidden lg:flex fixed ${sidebarPositionClass} top-0 w-8 h-full z-30 items-center hover:bg-base-300/20 transition-colors`}
 					onMouseEnter={handleMouseEnter}>
 					<div
-						className={`flex items-center gap-2 px-1 py-3 ${
-							isRTL ? 'rounded-l-lg' : 'rounded-r-lg'
-						} bg-base-300/40 hover:bg-base-300/60 transition-colors`}>
+						className={`
+              flex items-center gap-2 px-1 py-3 
+              ${isRTL ? 'rounded-l-lg' : 'rounded-r-lg'} 
+              bg-base-300/40 hover:bg-base-300/60 transition-colors
+            `}>
 						{isRTL ? (
 							<HiChevronLeft className='w-6 h-6 text-base-content/50' />
 						) : (
@@ -187,49 +213,49 @@ const Sidebar = () => {
 				ref={sidebarRef}
 				onMouseLeave={handleMouseLeave}
 				className={`
-                fixed 
-                inset-y-0 
-                ${sidebarPositionClass}
-                z-40 
-                flex
-                ${isMobile || isTablet ? 'w-full md:w-80' : 'w-80'}
-                transform
-                ${
-									mobileSidebarOpen
-										? 'translate-x-0'
-										: isRTL
-										? 'translate-x-full'
-										: '-translate-x-full'
-								}
-                ${
-									isPinned || isHovered
-										? 'lg:translate-x-0'
-										: isRTL
-										? 'lg:translate-x-full'
-										: 'lg:-translate-x-full'
-								}
-                transition-transform 
-                duration-300 
-                ease-out
-            `}>
+          fixed 
+          inset-y-0 
+          ${sidebarPositionClass}
+          z-40 
+          flex
+          ${isMobile || isTablet ? 'w-full md:w-80' : 'w-80'}
+          transform
+          ${
+						mobileSidebarOpen
+							? 'translate-x-0'
+							: isRTL
+							? 'translate-x-full'
+							: '-translate-x-full'
+					}
+          ${
+						isPinned || isHovered
+							? 'lg:translate-x-0'
+							: isRTL
+							? 'lg:translate-x-full'
+							: 'lg:-translate-x-full'
+					}
+          transition-transform 
+          duration-300 
+          ease-out
+        `}>
 				{/* Sticky Close Button for Mobile */}
 				{isMobile && mobileSidebarOpen && (
 					<button
 						onClick={handleCloseSidebars}
 						className={`
-                            absolute 
-                            ${closeButtonPositionClass} 
-                            top-1/2 
-                            transform 
-                            -translate-y-1/2
-                            ${isRTL ? '-translate-x-1' : 'translate-x-1'}
-                            bg-base-200 
-                            p-4 
-                            rounded-full 
-                            shadow-lg 
-                            hover:bg-base-300 
-                            z-50
-                        `}>
+              absolute 
+              ${closeButtonPositionClass} 
+              top-1/2 
+              transform 
+              -translate-y-1/2
+              ${isRTL ? '-translate-x-1' : 'translate-x-1'}
+              bg-base-200 
+              p-4 
+              rounded-full 
+              shadow-lg 
+              hover:bg-base-300 
+              z-50
+            `}>
 						<MdClose className='w-6 h-6' />
 					</button>
 				)}
@@ -325,21 +351,21 @@ const Sidebar = () => {
 						<button
 							onClick={() => toggleChatPreview(null)}
 							className={`
-                            fixed 
-                            top-4 
-                            ${isRTL ? 'left-4' : 'right-4'}
-                            z-40
-                            p-2 
-                            bg-base-300/80 
-                            hover:bg-base-300 
-                            text-base-content
-                            hover:text-primary
-                            rounded-full 
-                            transition-all 
-                            duration-200
-                            backdrop-blur-sm
-                            shadow-lg
-                        `}
+                fixed 
+                top-4 
+                ${isRTL ? 'left-4' : 'right-4'}
+                z-40
+                p-2 
+                bg-base-300/80 
+                hover:bg-base-300 
+                text-base-content
+                hover:text-primary
+                rounded-full 
+                transition-all 
+                duration-200
+                backdrop-blur-sm
+                shadow-lg
+              `}
 							style={{
 								[isRTL ? 'marginLeft' : 'marginRight']: '320px',
 							}}>
@@ -348,30 +374,34 @@ const Sidebar = () => {
 						<div
 							ref={previewRef}
 							className={`
-                            w-80 
-                            h-full 
-                            fixed 
-                            top-0 
-                            ${previewPositionClass}
-                            transform 
-                            transition-transform 
-                            duration-300 
-                            ease-out
-                            ${
-															showChatPreview
-																? 'translate-x-0'
-																: isRTL
-																? '-translate-x-full'
-																: 'translate-x-full'
-														}
-                            z-30
-                        `}>
+                w-80 
+                h-full 
+                fixed 
+                top-0 
+                ${previewPositionClass}
+                transform 
+                transition-transform 
+                duration-300 
+                ease-out
+                ${
+									showChatPreview
+										? 'translate-x-0'
+										: isRTL
+										? '-translate-x-full'
+										: 'translate-x-full'
+								}
+                z-30
+              `}>
 							<ChatPreview
 								chatId={previewChatId}
 								avatarUrl={
-									getPersonaByChat(
-										chatList.find((chat) => chat.id === previewChatId)
-									)?.avatar || '/images/default-avatar.png'
+									// If the chat is in chatList, find it and get the persona avatar
+									// else fallback
+									(chatList.find((c) => c.id === previewChatId) &&
+										getPersonaByChat(
+											chatList.find((c) => c.id === previewChatId)
+										)?.avatar) ||
+									'/images/default-avatar.png'
 								}
 								onClose={() => toggleChatPreview(null)}
 							/>
@@ -399,9 +429,10 @@ const Sidebar = () => {
 						<ChatPreview
 							chatId={previewChatId}
 							avatarUrl={
-								getPersonaByChat(
-									chatList.find((chat) => chat.id === previewChatId)
-								)?.avatar || '/images/default-avatar.png'
+								(chatList.find((c) => c.id === previewChatId) &&
+									getPersonaByChat(chatList.find((c) => c.id === previewChatId))
+										?.avatar) ||
+								'/images/default-avatar.png'
 							}
 							onClose={() => toggleChatPreview(null)}
 						/>
@@ -411,4 +442,5 @@ const Sidebar = () => {
 		</>
 	);
 };
+
 export default memo(Sidebar);
