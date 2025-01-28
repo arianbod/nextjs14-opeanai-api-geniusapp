@@ -1,6 +1,8 @@
 import React, { memo, useEffect, useRef, useCallback, useState } from 'react';
 import { throttle } from 'lodash';
 import { ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
+import { useSearchParams } from 'next/navigation'; // Updated for Next.js 15
+
 import Message from './Message';
 
 const MessageList = ({ messages, isLoading, messagesEndRef }) => {
@@ -10,11 +12,16 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 	const lastProcessedMessageCount = useRef(0);
 	const lastScrollPositionRef = useRef(0);
 
-	// Scroll settings based on content
-	const LINE_HEIGHT = 24; // Base line height in pixels
-	const SCROLL_THRESHOLD = 150; // Distance from bottom to consider "scrolled up"
+	// Updated routing for Next.js 15
+	// Using searchParams hook instead of router.query
+	const searchParams = useSearchParams();
+	const targetMessageId = searchParams.get('targetMessageId');
 
-	// Check if user has scrolled up
+	// Scroll configuration constants
+	const LINE_HEIGHT = 24; // Standard line height for message content
+	const SCROLL_THRESHOLD = 150; // Pixels from bottom to trigger auto-scroll behavior
+
+	// Determines if the user has scrolled up significantly from the bottom
 	const isScrolledUp = useCallback(() => {
 		if (!scrollContainerRef.current) return false;
 		const { scrollTop, scrollHeight, clientHeight } =
@@ -22,7 +29,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		return scrollHeight - (scrollTop + clientHeight) > SCROLL_THRESHOLD;
 	}, []);
 
-	// Content-based smooth scroll implementation
+	// Handles smooth content scrolling animation
 	const performContentScroll = useCallback(() => {
 		if (!scrollContainerRef.current || !isAutoScrollEnabled || isScrolledUp())
 			return;
@@ -35,22 +42,21 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		const lastMessageRect = lastMessage.getBoundingClientRect();
 		const containerRect = container.getBoundingClientRect();
 
-		// Calculate how much of the last message is visible
+		// Calculate visible portion of the last message
 		const messageVisibleHeight = Math.min(
 			lastMessageRect.bottom - containerRect.top,
 			lastMessageRect.height
 		);
 
-		// If message is not fully visible, scroll one line
+		// Scroll if message is partially visible
 		if (messageVisibleHeight < lastMessageRect.height) {
 			const currentScroll = container.scrollTop;
-			// Use direct assignment instead of scrollTo
 			container.scrollTop = currentScroll + LINE_HEIGHT;
 			lastScrollPositionRef.current = currentScroll + LINE_HEIGHT;
 		}
 	}, [isAutoScrollEnabled, isScrolledUp]);
 
-	// Handle content-based scrolling
+	// Handle new message arrivals
 	useEffect(() => {
 		if (
 			messages.length > lastProcessedMessageCount.current &&
@@ -60,20 +66,17 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		}
 	}, [messages, performContentScroll, isAutoScrollEnabled]);
 
-	// Handle scroll events
+	// Throttled scroll handler to manage scroll state and new content indicators
 	const handleScroll = useCallback(
 		throttle(() => {
 			const isUp = isScrolledUp();
-
 			if (isUp && isAutoScrollEnabled) {
 				setIsAutoScrollEnabled(false);
 			}
-
 			setHasNewContent(
 				isUp && messages.length > lastProcessedMessageCount.current
 			);
 
-			// Update last scroll position
 			if (scrollContainerRef.current) {
 				lastScrollPositionRef.current = scrollContainerRef.current.scrollTop;
 			}
@@ -81,7 +84,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		[messages.length, isAutoScrollEnabled, isScrolledUp]
 	);
 
-	// Add scroll listener
+	// Set up scroll event listener
 	useEffect(() => {
 		const container = scrollContainerRef.current;
 		if (container) {
@@ -90,7 +93,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		}
 	}, [handleScroll]);
 
-	// Track new messages
+	// Handle new message tracking and auto-scroll behavior
 	useEffect(() => {
 		const container = scrollContainerRef.current;
 		if (!container) return;
@@ -103,7 +106,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 			}
 		}
 
-		// Update processed message count when message stream completes
+		// Reset state when message stream completes
 		if (!isLoading) {
 			lastProcessedMessageCount.current = messages.length;
 			setHasNewContent(false);
@@ -116,10 +119,30 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		performContentScroll,
 	]);
 
+	// Handle scrolling to targeted message
+	useEffect(() => {
+		if (!targetMessageId) return;
+		if (!scrollContainerRef.current) return;
+
+		// Delayed scroll to ensure DOM is ready
+		const scrollToTarget = () => {
+			const targetElement = document.getElementById(
+				`message-${targetMessageId}`
+			);
+			if (targetElement) {
+				targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			}
+		};
+
+		// Add small delay to ensure render completion
+		setTimeout(scrollToTarget, 100);
+	}, [targetMessageId, messages]);
+
+	// Toggle auto-scroll functionality
 	const toggleAutoScroll = useCallback(() => {
 		setIsAutoScrollEnabled((prev) => {
 			if (!prev) {
-				// When enabling auto-scroll, immediately scroll to bottom
+				// Immediately scroll to bottom when enabling
 				const container = scrollContainerRef.current;
 				if (container) {
 					container.scrollTop = container.scrollHeight - container.clientHeight;
@@ -133,6 +156,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 
 	return (
 		<div className='relative flex flex-col w-full h-full'>
+			{/* Main scroll container for messages */}
 			<div
 				ref={scrollContainerRef}
 				className='flex flex-col overflow-y-auto space-y-4 backdrop-blur-lg z-0 pt-20 pb-24'>
@@ -140,12 +164,14 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 					{messages.map((message) => (
 						<div
 							key={message.id}
-							className='message-line animate-fade-in opacity-0' // Add these classes
-						>
+							id={`message-${message.id}`}
+							className='message-line animate-fade-in opacity-0'>
 							<Message
+								messageId={message.id}
 								role={message.role}
 								content={message.content}
 								timestamp={message.timestamp}
+								highlight={message.id === targetMessageId}
 							/>
 						</div>
 					))}
@@ -153,19 +179,19 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 				</div>
 			</div>
 
-			{/* Auto-scroll toggle button with smoother animations */}
+			{/* Floating auto-scroll toggle button */}
 			{(hasNewContent || !isAutoScrollEnabled) && (
 				<button
 					onClick={toggleAutoScroll}
 					className={`fixed bottom-80 right-6 p-3 rounded-full shadow-lg transition-all duration-500 
-            ${
-							isAutoScrollEnabled
-								? 'bg-base-content/10 hover:bg-base-content/20'
-								: 'bg-base-300 hover:bg-base-200'
-						} 
-            ${hasNewContent ? 'opacity-100' : 'opacity-70'}
-            transform transition-transform duration-500 ease-in-out
-            hover:scale-110`}
+                        ${
+													isAutoScrollEnabled
+														? 'bg-base-content/10 hover:bg-base-content/20'
+														: 'bg-base-300 hover:bg-base-200'
+												} 
+                        ${hasNewContent ? 'opacity-100' : 'opacity-70'}
+                        transform transition-transform duration-500 ease-in-out
+                        hover:scale-110`}
 					aria-label={
 						isAutoScrollEnabled ? 'Disable auto-scroll' : 'Enable auto-scroll'
 					}>

@@ -147,7 +147,8 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 				) : messages.length > 0 ? (
 					<div className='p-4 space-y-4'>
 						{messages.map((msg) => (
-							<div
+							<LocaleLink
+								href={`/chat/${chatId}?targetMessageId=${msg.id}`}
 								key={msg.id}
 								className='group bg-base-100 hover:bg-base-200/50 rounded-lg p-4 transition-colors duration-200 border border-base-200'>
 								<p className='text-sm leading-relaxed text-base-content'>
@@ -156,7 +157,7 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 								<span className='block mt-2 text-xs text-base-content/60'>
 									{formatDate(msg.timestamp)}
 								</span>
-							</div>
+							</LocaleLink>
 						))}
 					</div>
 				) : (
