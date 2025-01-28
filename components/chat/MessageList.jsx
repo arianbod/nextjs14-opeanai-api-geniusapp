@@ -193,23 +193,23 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 
 						return (
 							<div
+							{showDateDivider && (
+								// <div className='text-center my-2'>
+								// 	<span className='text-sm px-2 py-1 rounded text-base-content/70'>
+								// 		{formatDateDivider(message.timestamp)}
+								// 	</span>
+								// </div>
+								<div className='flex items-center gap-2 my-2'>
+									<div className='h-px flex-1 bg-base-300/30'></div>
+									<span className='text-xs font-medium text-base-content/50'>
+										{formatDateDivider(message.timestamp)}
+									</span>
+									<div className='h-px flex-1 bg-base-300/30'></div>
+								</div>
+							)}
 								key={message.id}
 								id={`message-${message.id}`}>
 								{/* Show a small date divider if needed */}
-								{showDateDivider && (
-									// <div className='text-center my-2'>
-									// 	<span className='text-sm px-2 py-1 rounded text-base-content/70'>
-									// 		{formatDateDivider(message.timestamp)}
-									// 	</span>
-									// </div>
-									<div className='flex items-center gap-2 my-2'>
-										<div className='h-px flex-1 bg-base-300/30'></div>
-										<span className='text-xs font-medium text-base-content/50'>
-											{formatDateDivider(message.timestamp)}
-										</span>
-										<div className='h-px flex-1 bg-base-300/30'></div>
-									</div>
-								)}
 
 								<div className='message-line animate-fade-in opacity-0'>
 									<Message

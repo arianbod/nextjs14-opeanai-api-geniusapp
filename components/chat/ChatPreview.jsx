@@ -1,6 +1,13 @@
-// components/chat/ChatPreview.jsx
-import React from 'react';
-import { MessageSquare, X, Zap, Code, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+	MessageSquare,
+	X,
+	Zap,
+	Code,
+	FileText,
+	ChevronDown,
+	ChevronUp,
+} from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import { useTranslations } from '@/context/TranslationContext';
 import LocaleLink from '../hoc/LocalLink';
@@ -11,11 +18,12 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 	const { isRTL } = useTranslations();
 	const messages = previewMessages[chatId] || [];
 	const currentChat = chatList.find((chat) => chat.id === chatId);
+	const [expandedMessages, setExpandedMessages] = useState({});
 
 	const getChatLengthColor = (messagesCount) => {
-		if (messagesCount > 20) return 'bg-error'; // Red for long chats
-		if (messagesCount < 5) return 'bg-success'; // Green for short chats
-		return 'bg-warning'; // Yellow for medium chats
+		if (messagesCount > 20) return 'bg-error';
+		if (messagesCount < 5) return 'bg-success';
+		return 'bg-warning';
 	};
 
 	const analyzeTokenUsage = (messages) => {
@@ -57,7 +65,16 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 		});
 	};
 
-	// Simplified StatBadge component
+	const toggleMessage = (messageId) => {
+		setExpandedMessages((prev) => ({
+			...prev,
+			[messageId]: !prev[messageId],
+		}));
+	};
+
+	// Character limit for message truncation
+	const CHARACTER_LIMIT = 180;
+
 	const StatBadge = ({ analysis }) => {
 		const Icon = analysis.icon;
 		return (
@@ -69,19 +86,50 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 		);
 	};
 
+	const MessageContent = ({ content, isExpanded, onClick }) => {
+		const shouldTruncate = content.length > CHARACTER_LIMIT;
+		const displayContent =
+			shouldTruncate && !isExpanded
+				? content.slice(0, CHARACTER_LIMIT) + '...'
+				: content;
+
+		return (
+			<div className='relative'>
+				<p className='text-sm leading-relaxed text-base-content'>
+					{displayContent}
+				</p>
+				{shouldTruncate && (
+					<button
+						onClick={onClick}
+						className='mt-2 text-primary hover:text-primary/80 text-sm font-medium flex items-center gap-1'>
+						{isExpanded ? (
+							<>
+								Show Less <ChevronUp className='w-4 h-4' />
+							</>
+						) : (
+							<>
+								Show More <ChevronDown className='w-4 h-4' />
+							</>
+						)}
+					</button>
+				)}
+			</div>
+		);
+	};
+
 	return (
 		<div
 			className={`
-                flex 
-                flex-col 
-                h-full 
-                bg-base-100
-                shadow-lg
-                transition-all 
-                duration-300
-                ${isRTL ? 'border-r' : 'border-l'}
-                border-base-200
-            `}
+        flex 
+        flex-col 
+        h-full 
+        bg-base-100
+        shadow-lg
+        transition-all 
+        duration-300
+        ${isRTL ? 'border-r' : 'border-l'}
+        border-base-200
+      `}
 			onClick={handleContentClick}>
 			{/* Header */}
 			<div className='sticky top-0 z-10 bg-base-100'>
@@ -145,20 +193,37 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 						<div className='loading loading-spinner text-primary'></div>
 					</div>
 				) : messages.length > 0 ? (
-					<div className='p-4 space-y-4'>
-						{messages.map((msg) => (
-							<LocaleLink
-								href={`/chat/${chatId}?targetMessageId=${msg.id}`}
-								key={msg.id}
-								className='group bg-base-100 hover:bg-base-200/50 rounded-lg p-4 transition-colors duration-200 border border-base-200'>
-								<p className='text-sm leading-relaxed text-base-content'>
-									{msg.content}
-								</p>
-								<span className='block mt-2 text-xs text-base-content/60'>
-									{formatDate(msg.timestamp)}
-								</span>
-							</LocaleLink>
-						))}
+					<div className='relative p-4'>
+						{/* Vertical Timeline Line */}
+						<div className='absolute left-8 top-0 bottom-0 w-px bg-base-300/50'></div>
+
+						<div className='space-y-4'>
+							{messages.map((msg, index) => (
+								<LocaleLink
+									href={`/chat/${chatId}?targetMessageId=${msg.id}`}
+									key={msg.id}
+									className='block w-full'>
+									<div className='group relative flex items-start gap-4 bg-base-100 hover:bg-base-200/50 rounded-lg p-4 transition-colors duration-200 border border-base-200'>
+										{/* Timeline Dot */}
+										<div className='w-4 h-4 mt-2 rounded-full bg-primary/20 border-2 border-primary/40 shrink-0'></div>
+
+										<div className='flex-1 min-w-0'>
+											<MessageContent
+												content={msg.content}
+												isExpanded={expandedMessages[msg.id]}
+												onClick={(e) => {
+													e.preventDefault();
+													toggleMessage(msg.id);
+												}}
+											/>
+											<span className='block mt-2 text-xs text-base-content/60'>
+												{formatDate(msg.timestamp)}
+											</span>
+										</div>
+									</div>
+								</LocaleLink>
+							))}
+						</div>
 					</div>
 				) : (
 					<div className='flex flex-col items-center justify-center h-32 text-base-content/60'>
