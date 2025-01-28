@@ -154,44 +154,84 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 		});
 	}, [messages.length]);
 
+	/**
+	 * ADDED: Helper to format date as "Month Day, Year".
+	 * Adjust to your preference or localization.
+	 */
+	const formatDateDivider = (dateString) => {
+		const date = new Date(dateString);
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+		});
+	};
+
+	/**
+	 * ADDED: Helper to see if two timestamps are on the same day
+	 */
+	const isSameDay = (ts1, ts2) => {
+		const d1 = new Date(ts1);
+		const d2 = new Date(ts2);
+		return (
+			d1.getDate() === d2.getDate() &&
+			d1.getMonth() === d2.getMonth() &&
+			d1.getFullYear() === d2.getFullYear()
+		);
+	};
+
 	return (
 		<div className='relative flex flex-col w-full h-full'>
-			{/* Main scroll container for messages */}
 			<div
 				ref={scrollContainerRef}
 				className='flex flex-col overflow-y-auto space-y-4 backdrop-blur-lg z-0 pt-20 pb-24'>
 				<div className='w-full max-w-3xl mx-auto flex flex-col gap-4'>
-					{messages.map((message) => (
-						<div
-							key={message.id}
-							id={`message-${message.id}`}
-							className='message-line animate-fade-in opacity-0'>
-							<Message
-								messageId={message.id}
-								role={message.role}
-								content={message.content}
-								timestamp={message.timestamp}
-								highlight={message.id === targetMessageId}
-							/>
-						</div>
-					))}
+					{messages.map((message, index) => {
+						const showDateDivider =
+							index === 0 ||
+							!isSameDay(message.timestamp, messages[index - 1].timestamp);
+
+						return (
+							<div										
+								key={message.id}
+								id={`message-${message.id}`}>
+								{/* Show a small date divider if needed */}
+								{showDateDivider && (
+									<div className='text-center my-2'>
+										<span className='bg-base-200 text-sm px-2 py-1 rounded text-base-content/70'>
+											{formatDateDivider(message.timestamp)}
+										</span>
+									</div>
+								)}
+
+								<div className='message-line animate-fade-in opacity-0'>
+									<Message
+										messageId={message.id}
+										role={message.role}
+										content={message.content}
+										timestamp={message.timestamp}
+									/>
+								</div>
+							</div>
+						);
+					})}
 					<div ref={messagesEndRef} />
 				</div>
 			</div>
 
-			{/* Floating auto-scroll toggle button */}
+			{/* Auto-scroll toggle button */}
 			{(hasNewContent || !isAutoScrollEnabled) && (
 				<button
 					onClick={toggleAutoScroll}
 					className={`fixed bottom-80 right-6 p-3 rounded-full shadow-lg transition-all duration-500 
-                        ${
-													isAutoScrollEnabled
-														? 'bg-base-content/10 hover:bg-base-content/20'
-														: 'bg-base-300 hover:bg-base-200'
-												} 
-                        ${hasNewContent ? 'opacity-100' : 'opacity-70'}
-                        transform transition-transform duration-500 ease-in-out
-                        hover:scale-110`}
+            ${
+							isAutoScrollEnabled
+								? 'bg-base-content/10 hover:bg-base-content/20'
+								: 'bg-base-300 hover:bg-base-200'
+						} 
+            ${hasNewContent ? 'opacity-100' : 'opacity-70'}
+            transform transition-transform duration-500 ease-in-out
+            hover:scale-110`}
 					aria-label={
 						isAutoScrollEnabled ? 'Disable auto-scroll' : 'Enable auto-scroll'
 					}>
