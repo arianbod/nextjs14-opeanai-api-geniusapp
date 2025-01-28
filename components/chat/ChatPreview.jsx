@@ -194,35 +194,50 @@ const ChatPreview = ({ chatId, avatarUrl, onClose }) => {
 					</div>
 				) : messages.length > 0 ? (
 					<div className='relative p-4'>
-						{/* Vertical Timeline Line */}
-						<div className='absolute left-8 top-0 bottom-0 w-px bg-base-300/50'></div>
+						{/* Timeline Container with Start/End Markers */}
+						<div className='relative'>
+							{/* Start Marker */}
+							<div className='absolute left-8 top-0 -translate-x-1/2 -translate-y-1/2 z-10'>
+								<div className='w-2 h-2 rounded-full bg-primary'></div>
+								<div className='absolute top-0 left-1/2 w-px h-3 bg-gradient-to-b from-primary to-transparent'></div>
+							</div>
 
-						<div className='space-y-4'>
-							{messages.map((msg, index) => (
-								<LocaleLink
-									href={`/chat/${chatId}?targetMessageId=${msg.id}`}
-									key={msg.id}
-									className='block w-full'>
-									<div className='group relative flex items-start gap-4 bg-base-100 hover:bg-base-200/50 rounded-lg p-4 transition-colors duration-200 border border-base-200'>
-										{/* Timeline Dot */}
-										<div className='w-4 h-4 mt-2 rounded-full bg-primary/20 border-2 border-primary/40 shrink-0'></div>
+							{/* Vertical Timeline Line */}
+							<div className='absolute left-8 top-0 bottom-0 w-px bg-base-300/30'></div>
 
-										<div className='flex-1 min-w-0'>
-											<MessageContent
-												content={msg.content}
-												isExpanded={expandedMessages[msg.id]}
-												onClick={(e) => {
-													e.preventDefault();
-													toggleMessage(msg.id);
-												}}
-											/>
-											<span className='block mt-2 text-xs text-base-content/60'>
-												{formatDate(msg.timestamp)}
-											</span>
+							{/* End Marker */}
+							<div className='absolute left-8 bottom-0 -translate-x-1/2 translate-y-1/2 z-10'>
+								<div className='absolute bottom-0 left-1/2 w-px h-3 bg-gradient-to-t from-primary to-transparent'></div>
+								<div className='w-2 h-2 rounded-full bg-primary'></div>
+							</div>
+
+							<div className='space-y-4 pt-8 pb-8'>
+								{messages.map((msg, index) => (
+									<LocaleLink
+										href={`/chat/${chatId}?targetMessageId=${msg.id}`}
+										key={msg.id}
+										className='block w-full'>
+										<div className='group relative flex items-start gap-4 bg-base-100 hover:bg-base-200 rounded-lg p-4 transition-colors duration-200 border border-base-200'>
+											{/* Timeline Dot */}
+											<div className='w-4 h-4 mt-2 rounded-full bg-primary/20 border-2 border-primary/40 shrink-0'></div>
+
+											<div className='flex-1 min-w-0'>
+												<MessageContent
+													content={msg.content}
+													isExpanded={expandedMessages[msg.id]}
+													onClick={(e) => {
+														e.preventDefault();
+														toggleMessage(msg.id);
+													}}
+												/>
+												<span className='block mt-2 text-xs text-base-content/60'>
+													{formatDate(msg.timestamp)}
+												</span>
+											</div>
 										</div>
-									</div>
-								</LocaleLink>
-							))}
+									</LocaleLink>
+								))}
+							</div>
 						</div>
 					</div>
 				) : (

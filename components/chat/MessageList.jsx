@@ -155,7 +155,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 	}, [messages.length]);
 
 	/**
-	 * ADDED: Helper to format date as "Month Day, Year".
+	 * Helper to format date as "Month Day, Year".
 	 * Adjust to your preference or localization.
 	 */
 	const formatDateDivider = (dateString) => {
@@ -168,7 +168,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 	};
 
 	/**
-	 * ADDED: Helper to see if two timestamps are on the same day
+	 * Helper to see if two timestamps are on the same day
 	 */
 	const isSameDay = (ts1, ts2) => {
 		const d1 = new Date(ts1);
@@ -190,17 +190,13 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 						const showDateDivider =
 							index === 0 ||
 							!isSameDay(message.timestamp, messages[index - 1].timestamp);
+						const isTargeted = message.id === targetMessageId;
 
 						return (
 							<div
 								key={message.id}
 								id={`message-${message.id}`}>
 								{showDateDivider && (
-									// <div className='text-center my-2'>
-									// 	<span className='text-sm px-2 py-1 rounded text-base-content/70'>
-									// 		{formatDateDivider(message.timestamp)}
-									// 	</span>
-									// </div>
 									<div className='flex items-center gap-2 my-2'>
 										<div className='h-px flex-1 bg-base-300/30'></div>
 										<span className='text-xs font-medium text-base-content/50'>
@@ -209,7 +205,6 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 										<div className='h-px flex-1 bg-base-300/30'></div>
 									</div>
 								)}
-								{/* Show a small date divider if needed */}
 
 								<div className='message-line animate-fade-in opacity-0'>
 									<Message
@@ -217,6 +212,7 @@ const MessageList = ({ messages, isLoading, messagesEndRef }) => {
 										role={message.role}
 										content={message.content}
 										timestamp={message.timestamp}
+										highlight={isTargeted && true}
 									/>
 								</div>
 							</div>
