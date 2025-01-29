@@ -109,7 +109,7 @@ const ModelSelection = () => {
 				{recentModels.length > 0 &&
 					!searchTerm &&
 					selectedCategory === 'all' && (
-						<div className='mb-8'>
+						<div className='mb-8 hidden lg:block'>
 							<h2 className='text-lg font-semibold mb-4 text-base-content font-persian'>
 								{t('modelSelection.recent')}
 							</h2>
