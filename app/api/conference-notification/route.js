@@ -6,7 +6,7 @@ import { sendConferenceNotification } from '@/server/services/conferenceEmailSer
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { email, conferenceUrl } = body;
+        const { email, conferenceUrl, messages } = body;
 
         // Validate required fields
         if (!email || !conferenceUrl) {
@@ -35,7 +35,7 @@ export async function POST(request) {
             );
         }
 
-        const result = await sendConferenceNotification(email, conferenceUrl);
+        const result = await sendConferenceNotification(email, conferenceUrl, texts);
 
         if (!result.success) {
             return NextResponse.json(
