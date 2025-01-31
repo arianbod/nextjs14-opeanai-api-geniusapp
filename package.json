@@ -61,7 +61,7 @@
 		"tailwindcss-animate": "^1.0.7",
 		"tailwindcss-filters": "^3.0.0",
 		"tailwindcss-logical": "^3.0.1",
-		"twilio": "^5.3.6",
+		"twilio": "^5.4.3",
 		"use-debounce": "^10.0.3"
 	},
 	"devDependencies": {
