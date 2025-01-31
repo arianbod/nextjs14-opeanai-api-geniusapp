@@ -1,4 +1,3 @@
-
 // app/api/conference-notification/route.js
 import { NextResponse } from 'next/server';
 import { sendConferenceNotification } from '@/server/services/conferenceEmailService';
@@ -35,7 +34,20 @@ export async function POST(request) {
             );
         }
 
-        const result = await sendConferenceNotification(email, conferenceUrl, texts);
+        // Validate messages format if provided
+        if (messages && (!Array.isArray(messages) || !messages.every(msg =>
+            msg &&
+            typeof msg === 'object' &&
+            typeof msg.content === 'string' &&
+            ['user', 'assistant'].includes(msg.role) &&
+            typeof msg.timestamp === 'string'))) {
+            return NextResponse.json(
+                { error: 'Invalid messages format' },
+                { status: 400 }
+            );
+        }
+
+        const result = await sendConferenceNotification(email, conferenceUrl, messages);
 
         if (!result.success) {
             return NextResponse.json(
