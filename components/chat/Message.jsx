@@ -6,10 +6,6 @@ import { Copy, Share2, MapPin, Star, StarOff, FileText } from 'lucide-react';
 import { useChat } from '@/context/ChatContext';
 import MarkdownRenderer from './MarkdownRenderer';
 
-/**
- * We now get pinned, starred, and notes from props
- * (passed in by MessageList). No more "messages.find(...)"
- */
 const Message = ({
 	messageId,
 	role,
@@ -26,11 +22,10 @@ const Message = ({
 		toggleStarMessage,
 		updateMessageNotes,
 	} = useChat();
-
 	const isUser = role === 'user';
 
-	// For inline note UI
-	const [notesOpen, setNotesOpen] = useState(!!notes); // open if there is an existing note
+	// Inline note state
+	const [notesOpen, setNotesOpen] = useState(!!notes);
 	const [notesEditMode, setNotesEditMode] = useState(false);
 	const [notesDraft, setNotesDraft] = useState(notes);
 
@@ -41,11 +36,8 @@ const Message = ({
 		);
 	};
 
-	const formatTimestamp = (ts) => {
-		return new Date(ts).toLocaleTimeString();
-	};
+	const formatTimestamp = (ts) => new Date(ts).toLocaleTimeString();
 
-	// Handler to save notes
 	const handleSaveNotes = async () => {
 		await updateMessageNotes(messageId, notesDraft);
 		setNotesEditMode(false);
@@ -71,14 +63,13 @@ const Message = ({
 			)}
 
 			<div
-				className={`flex flex-col mb-4 rounded-lg p-4 transition-all
-          ${isUser ? 'w-1/2 bg-gray-100 dark:bg-gray-800' : 'w-11/12'}
-          ${
-						highlight
-							? 'border-2 border-yellow-400 dark:border-yellow-500 shadow-md shadow-yellow-200'
-							: ''
-					}
-        `}>
+				className={`flex flex-col mb-4 rounded-lg p-4 transition-all ${
+					isUser ? 'w-1/2 bg-gray-100 dark:bg-gray-800' : 'w-11/12'
+				} ${
+					highlight
+						? 'border-2 border-yellow-400 dark:border-yellow-500 shadow-md shadow-yellow-200'
+						: ''
+				}`}>
 				{/* MESSAGE CONTENT */}
 				<div className='w-full overflow-x-auto text-wrap'>
 					<MarkdownRenderer
@@ -86,6 +77,14 @@ const Message = ({
 						isUser={isUser}
 						copyToClipboard={copyToClipboard}
 						activeChat={activeChat}
+						onAddToNote={(codeSnippet) => {
+							// Append the code snippet to the existing note.
+							const newNotes = notes
+								? `${notes}\n\n${codeSnippet}`
+								: codeSnippet;
+							updateMessageNotes(messageId, newNotes);
+							toast.success('Code added to note!');
+						}}
 					/>
 				</div>
 
@@ -164,7 +163,6 @@ const Message = ({
 
 				{/* FOOTER ROW: TIME + ACTIONS */}
 				<div className='mt-3 pt-3 border-t border-base-300 dark:border-gray-700 flex justify-between items-center'>
-					{/* TIMESTAMP */}
 					<span
 						className={`text-[11px] ${
 							isUser
@@ -173,9 +171,7 @@ const Message = ({
 						}`}>
 						{formatTimestamp(timestamp)}
 					</span>
-
 					<div className='flex items-center gap-2'>
-						{/* COPY */}
 						<button
 							className='p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded flex items-center gap-1'
 							onClick={() => copyToClipboard(content)}
@@ -185,8 +181,6 @@ const Message = ({
 								className='text-gray-600 dark:text-gray-400'
 							/>
 						</button>
-
-						{/* SHARE */}
 						<button
 							className='p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded flex items-center gap-1'
 							onClick={() => {
@@ -202,8 +196,6 @@ const Message = ({
 								className='text-gray-600 dark:text-gray-400'
 							/>
 						</button>
-
-						{/* PIN */}
 						<button
 							className='p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded flex items-center gap-1'
 							onClick={() => togglePinMessage(messageId)}
@@ -217,8 +209,6 @@ const Message = ({
 								}
 							/>
 						</button>
-
-						{/* STAR */}
 						<button
 							className='p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded flex items-center gap-1'
 							onClick={() => toggleStarMessage(messageId)}
@@ -236,8 +226,6 @@ const Message = ({
 								/>
 							)}
 						</button>
-
-						{/* NOTES ICON */}
 						<button
 							className='p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded flex items-center gap-1'
 							onClick={() => setNotesOpen((o) => !o)}

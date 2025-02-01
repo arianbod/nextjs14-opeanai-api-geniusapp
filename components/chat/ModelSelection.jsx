@@ -1,6 +1,6 @@
 // @/components/ModelSelection.js
 
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useEffect } from 'react';
 import SearchComponent from './SearchComponent';
 import { AIPersonas } from '@/lib/Personas';
 import { useChat } from '@/context/ChatContext';
@@ -16,6 +16,22 @@ const ModelSelection = () => {
 	const [searchTerm, setSearchTerm] = useState('');
 	const [selectedCategory, setSelectedCategory] = useState('all');
 	const { t } = useTranslations(); // Destructure only 't' as 'dict' is not used directly
+	const [isMobile, setIsMobile] = useState(false);
+
+	useEffect(() => {
+		const checkMobile = () => {
+			setIsMobile(window.innerWidth < 768);
+		};
+
+		// Initial check
+		checkMobile();
+
+		// Add event listener
+		window.addEventListener('resize', checkMobile);
+
+		// Cleanup
+		return () => window.removeEventListener('resize', checkMobile);
+	}, []);
 
 	const AvailableAIPersonas = useMemo(
 		() => AIPersonas.filter((persona) => persona.showOnModelSelection === true),
@@ -106,7 +122,8 @@ const ModelSelection = () => {
 
 			<div className='max-w-4xl mx-auto px-6 py-8'>
 				{/* Recent Models */}
-				{recentModels.length > 0 &&
+				{!isMobile &&
+					recentModels.length > 0 &&
 					!searchTerm &&
 					selectedCategory === 'all' && (
 						<div className='mb-8 hidden lg:block'>
